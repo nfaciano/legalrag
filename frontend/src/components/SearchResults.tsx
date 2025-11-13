@@ -78,7 +78,7 @@ export function SearchResults({ searchResponse }: SearchResultsProps) {
       </Card>
 
       {/* Results */}
-      {searchResponse.results.map((result, index) => (
+      {searchResponse.results.map((result) => (
         <Card key={result.metadata.chunk_id} className="hover:shadow-md transition-shadow">
           <CardHeader>
             <div className="flex items-start justify-between gap-4">
