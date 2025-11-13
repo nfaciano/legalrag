@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 class SearchEngine:
     """Semantic search engine for legal documents"""
 
-    def __init__(self, use_reranking: bool = True):
+    def __init__(self, use_reranking: bool = False):  # Disabled for free tier
         self.db = get_vector_db()
         self.embedder = get_embedding_model()
         self.use_reranking = use_reranking
