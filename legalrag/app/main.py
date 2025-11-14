@@ -4,6 +4,7 @@ from fastapi.responses import JSONResponse
 import logging
 import os
 import shutil
+import re
 from pathlib import Path
 from typing import List
 from dotenv import load_dotenv
@@ -121,6 +122,11 @@ async def upload_document(
     if not file.filename.endswith('.pdf'):
         raise HTTPException(status_code=400, detail="Only PDF files are supported")
 
+    # Sanitize filename to prevent path traversal attacks
+    safe_filename = re.sub(r'[^a-zA-Z0-9_.-]', '_', file.filename)
+    if not safe_filename or safe_filename.startswith('.'):
+        safe_filename = f"document_{user_id[:8]}.pdf"
+
     # Validate file size (100MB limit)
     MAX_FILE_SIZE = 100 * 1024 * 1024  # 100MB in bytes
 
@@ -137,8 +143,8 @@ async def upload_document(
         if not file_content.startswith(b'%PDF'):
             raise HTTPException(status_code=400, detail="Invalid PDF file")
 
-        # Save uploaded file
-        file_path = UPLOAD_DIR / file.filename
+        # Save uploaded file with sanitized name
+        file_path = UPLOAD_DIR / safe_filename
         with open(file_path, "wb") as buffer:
             buffer.write(file_content)
 
@@ -146,7 +152,7 @@ async def upload_document(
 
         # Process document
         processor = get_document_processor()
-        chunks = processor.process_pdf(str(file_path), file.filename, user_id)
+        chunks = processor.process_pdf(str(file_path), safe_filename, user_id)
 
         if not chunks:
             raise HTTPException(status_code=400, detail="No text extracted from PDF")
