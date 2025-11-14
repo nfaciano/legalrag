@@ -93,6 +93,7 @@ class DocumentProcessor:
     def _extract_text_from_pdf(self, pdf_path: str) -> Dict[int, str]:
         """
         Extract text from PDF, organized by page
+        Uses OCR fallback for scanned documents without embedded text
 
         Args:
             pdf_path: Path to PDF file
@@ -101,15 +102,35 @@ class DocumentProcessor:
             Dictionary mapping page numbers to text
         """
         text_by_page = {}
+        ocr_pages = 0
 
         try:
             doc = fitz.open(pdf_path)
             for page_num in range(len(doc)):
                 page = doc[page_num]
+
+                # Try standard text extraction first (fast)
                 text = page.get_text()
+
+                # If no text found, use OCR (slower but handles scanned docs)
+                if not text.strip():
+                    logger.info(f"No embedded text on page {page_num + 1}, using OCR")
+                    try:
+                        # Use PyMuPDF's built-in OCR (requires Tesseract installed)
+                        tp = page.get_textpage_ocr()
+                        text = tp.extractText()
+                        ocr_pages += 1
+                    except Exception as ocr_error:
+                        logger.warning(f"OCR failed on page {page_num + 1}: {ocr_error}")
+                        text = ""  # Empty text if OCR fails
+
                 text_by_page[page_num + 1] = text  # 1-indexed pages
 
             doc.close()
+
+            if ocr_pages > 0:
+                logger.info(f"Used OCR on {ocr_pages}/{len(doc)} pages")
+
         except Exception as e:
             logger.error(f"Error extracting text from PDF: {e}")
             raise
