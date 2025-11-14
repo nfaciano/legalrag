@@ -17,8 +17,12 @@ class AnswerSynthesizer:
             logger.warning("GROQ_API_KEY not found in environment. Answer synthesis will not work.")
             self.client = None
         else:
-            self.client = Groq(api_key=api_key)
-            logger.info("Groq client initialized successfully")
+            try:
+                self.client = Groq(api_key=api_key)
+                logger.info("Groq client initialized successfully")
+            except Exception as e:
+                logger.error(f"Failed to initialize Groq client: {e}")
+                self.client = None
 
     def synthesize(
         self,
