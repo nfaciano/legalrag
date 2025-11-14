@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { Upload, FileText, X, ScanLine, AlertCircle } from "lucide-react";
+import { Upload, FileText, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useApi } from "@/lib/useApi";
