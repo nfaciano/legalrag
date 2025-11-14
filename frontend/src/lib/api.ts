@@ -4,6 +4,7 @@ import type {
   UploadResponse,
   DocumentListResponse,
   DeleteResponse,
+  DocumentTextResponse,
 } from "@/types/api";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
@@ -97,6 +98,21 @@ export class ApiClient {
     if (!response.ok) {
       const error = await response.text();
       throw new Error(`Failed to delete document: ${error}`);
+    }
+
+    return response.json();
+  }
+
+  async getDocumentText(documentId: string): Promise<DocumentTextResponse> {
+    const headers = await this.getHeaders();
+
+    const response = await fetch(`${this.baseUrl}/documents/${documentId}/text`, {
+      headers,
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Failed to get document text: ${error}`);
     }
 
     return response.json();

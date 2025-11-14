@@ -46,8 +46,14 @@ export function SearchResults({ searchResponse }: SearchResultsProps) {
     (result) => result.similarity_score >= RELEVANCE_THRESHOLD
   );
 
-  // If no results meet threshold, show "no relevant results" message
-  if (relevantResults.length === 0) {
+  // If AI generated an answer, show ALL results (AI already filtered them)
+  // Otherwise, only show results above threshold
+  const resultsToShow = searchResponse.synthesized_answer
+    ? searchResponse.results
+    : relevantResults;
+
+  // If no results meet threshold and no AI answer, show "no relevant results" message
+  if (resultsToShow.length === 0) {
     return (
       <div className="space-y-4">
         {/* Synthesized Answer (if available) */}
@@ -99,7 +105,7 @@ export function SearchResults({ searchResponse }: SearchResultsProps) {
               <CardTitle>AI-Generated Answer</CardTitle>
             </div>
             <CardDescription>
-              Synthesized from {relevantResults.length} relevant sources using Groq
+              Synthesized from {resultsToShow.length} sources using Groq
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -119,14 +125,14 @@ export function SearchResults({ searchResponse }: SearchResultsProps) {
             {searchResponse.synthesized_answer ? "Source Documents" : "Search Results"}
           </CardTitle>
           <CardDescription>
-            Found {relevantResults.length} relevant passages for "
+            Found {resultsToShow.length} {searchResponse.synthesized_answer ? "source passages" : "relevant passages"} for "
             {searchResponse.query}"
           </CardDescription>
         </CardHeader>
       </Card>
 
       {/* Results */}
-      {relevantResults.map((result) => (
+      {resultsToShow.map((result) => (
         <Card key={result.metadata.chunk_id} className="hover:shadow-md transition-shadow">
           <CardHeader>
             <div className="flex items-start justify-between gap-4">

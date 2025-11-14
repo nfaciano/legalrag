@@ -15,6 +15,13 @@ function App() {
 
   const handleUploadComplete = (response: UploadResponse) => {
     console.log("Upload complete:", response);
+
+    // Show OCR warning if document was scanned
+    if (response.ocr_used) {
+      const ocrMessage = `Scanned document detected: OCR was used on ${response.ocr_pages}/${response.total_pages} pages. Text extraction may not be 100% accurate.`;
+      alert(ocrMessage);
+    }
+
     // Trigger document list refresh
     setRefreshTrigger((prev) => prev + 1);
   };

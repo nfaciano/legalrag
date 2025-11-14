@@ -2,9 +2,73 @@ import fitz  # PyMuPDF
 from typing import List, Dict, Any
 import hashlib
 import logging
+import os
+import io
 from datetime import datetime
+from pathlib import Path
+from PIL import Image, ImageEnhance, ImageFilter
+import pytesseract
 
 logger = logging.getLogger(__name__)
+
+# Configure Tesseract for OCR support
+if os.name == 'nt':  # Windows
+    tesseract_path = Path(r"C:\Program Files\Tesseract-OCR")
+    if tesseract_path.exists():
+        pytesseract.pytesseract.tesseract_cmd = str(tesseract_path / 'tesseract.exe')
+        if 'TESSDATA_PREFIX' not in os.environ:
+            os.environ['TESSDATA_PREFIX'] = str(tesseract_path / 'tessdata')
+        logger.info(f"Set Tesseract path to {pytesseract.pytesseract.tesseract_cmd}")
+else:  # Linux (Railway production)
+    # Tesseract is in standard location after apt-get install
+    if Path('/usr/bin/tesseract').exists():
+        pytesseract.pytesseract.tesseract_cmd = '/usr/bin/tesseract'
+    # Set tessdata if not already set
+    if 'TESSDATA_PREFIX' not in os.environ:
+        if Path('/usr/share/tesseract-ocr/4.00/tessdata').exists():
+            os.environ['TESSDATA_PREFIX'] = '/usr/share/tesseract-ocr/4.00/tessdata'
+        elif Path('/usr/share/tesseract-ocr/tessdata').exists():
+            os.environ['TESSDATA_PREFIX'] = '/usr/share/tesseract-ocr/tessdata'
+
+
+def preprocess_image_for_ocr(pix: fitz.Pixmap) -> Image.Image:
+    """
+    Preprocess image to improve OCR quality
+
+    Args:
+        pix: PyMuPDF Pixmap object
+
+    Returns:
+        Preprocessed PIL Image
+    """
+    # Convert pixmap to PIL Image
+    img_data = pix.tobytes("png")
+    img = Image.open(io.BytesIO(img_data))
+
+    # Convert to grayscale
+    img = img.convert('L')
+
+    # Upscale for better OCR (2x)
+    new_size = (img.width * 2, img.height * 2)
+    img = img.resize(new_size, Image.Resampling.LANCZOS)
+
+    # Enhance contrast
+    enhancer = ImageEnhance.Contrast(img)
+    img = enhancer.enhance(2.0)
+
+    # Enhance sharpness
+    enhancer = ImageEnhance.Sharpness(img)
+    img = enhancer.enhance(1.5)
+
+    # Denoise
+    img = img.filter(ImageFilter.MedianFilter(size=3))
+
+    # Convert to black and white with threshold (binarization)
+    # This often helps OCR by removing gray areas
+    threshold = 128
+    img = img.point(lambda p: 255 if p > threshold else 0)
+
+    return img
 
 
 class DocumentChunk:
@@ -18,7 +82,10 @@ class DocumentChunk:
         page: int,
         chunk_id: str,
         total_chunks: int,
-        user_id: str = None
+        user_id: str = None,
+        ocr_used: bool = False,
+        ocr_pages: int = 0,
+        total_pages: int = 0
     ):
         self.text = text
         self.document_id = document_id
@@ -27,6 +94,9 @@ class DocumentChunk:
         self.chunk_id = chunk_id
         self.total_chunks = total_chunks
         self.user_id = user_id
+        self.ocr_used = ocr_used
+        self.ocr_pages = ocr_pages
+        self.total_pages = total_pages
 
     def to_metadata(self) -> Dict[str, Any]:
         """Convert to metadata dict for storage"""
@@ -36,7 +106,10 @@ class DocumentChunk:
             "page": self.page,
             "chunk_id": self.chunk_id,
             "total_chunks": self.total_chunks,
-            "upload_date": datetime.now().isoformat()
+            "upload_date": datetime.now().isoformat(),
+            "ocr_used": self.ocr_used,
+            "ocr_pages": self.ocr_pages,
+            "total_pages": self.total_pages
         }
         if self.user_id:
             metadata["user_id"] = self.user_id
@@ -78,19 +151,22 @@ class DocumentProcessor:
         # Generate document ID from filename and content
         document_id = self._generate_document_id(filename)
 
-        # Extract text from PDF
-        text_by_page = self._extract_text_from_pdf(pdf_path)
+        # Extract text from PDF (returns OCR stats too)
+        text_by_page, ocr_used, ocr_pages, total_pages = self._extract_text_from_pdf(pdf_path)
 
         # Combine all text
         full_text = " ".join([text for text in text_by_page.values()])
 
         # Create chunks
-        chunks = self._create_chunks(full_text, document_id, filename, text_by_page, user_id)
+        chunks = self._create_chunks(
+            full_text, document_id, filename, text_by_page, user_id,
+            ocr_used, ocr_pages, total_pages
+        )
 
         logger.info(f"Created {len(chunks)} chunks from {filename}")
         return chunks
 
-    def _extract_text_from_pdf(self, pdf_path: str) -> Dict[int, str]:
+    def _extract_text_from_pdf(self, pdf_path: str) -> tuple[Dict[int, str], bool, int, int]:
         """
         Extract text from PDF, organized by page
         Uses OCR fallback for scanned documents without embedded text
@@ -99,14 +175,16 @@ class DocumentProcessor:
             pdf_path: Path to PDF file
 
         Returns:
-            Dictionary mapping page numbers to text
+            Tuple of (text_by_page dict, ocr_used bool, ocr_pages count, total_pages count)
         """
         text_by_page = {}
         ocr_pages = 0
 
         try:
             doc = fitz.open(pdf_path)
-            for page_num in range(len(doc)):
+            total_pages = len(doc)
+
+            for page_num in range(total_pages):
                 page = doc[page_num]
 
                 # Try standard text extraction first (fast)
@@ -114,12 +192,23 @@ class DocumentProcessor:
 
                 # If no text found, use OCR (slower but handles scanned docs)
                 if not text.strip():
-                    logger.info(f"No embedded text on page {page_num + 1}, using OCR")
+                    logger.info(f"No embedded text on page {page_num + 1}, using OCR with preprocessing")
                     try:
-                        # Use PyMuPDF's built-in OCR (requires Tesseract installed)
-                        tp = page.get_textpage_ocr()
-                        text = tp.extractText()
+                        # Convert page to high-resolution image
+                        pix = page.get_pixmap(dpi=300)
+
+                        # Preprocess image for better OCR quality
+                        preprocessed_img = preprocess_image_for_ocr(pix)
+
+                        # Use pytesseract with page segmentation mode 1 (automatic with OSD)
+                        # Try PSM 3 first (fully automatic), then PSM 1 if that fails
+                        try:
+                            text = pytesseract.image_to_string(preprocessed_img, config='--psm 3')
+                        except Exception:
+                            text = pytesseract.image_to_string(preprocessed_img, config='--psm 1')
+
                         ocr_pages += 1
+                        logger.info(f"OCR extracted {len(text)} characters from page {page_num + 1}")
                     except Exception as ocr_error:
                         logger.warning(f"OCR failed on page {page_num + 1}: {ocr_error}")
                         text = ""  # Empty text if OCR fails
@@ -129,13 +218,14 @@ class DocumentProcessor:
             doc.close()
 
             if ocr_pages > 0:
-                logger.info(f"Used OCR on {ocr_pages}/{len(doc)} pages")
+                logger.info(f"Used OCR on {ocr_pages}/{total_pages} pages")
 
         except Exception as e:
             logger.error(f"Error extracting text from PDF: {e}")
             raise
 
-        return text_by_page
+        ocr_used = ocr_pages > 0
+        return text_by_page, ocr_used, ocr_pages, total_pages
 
     def _create_chunks(
         self,
@@ -143,7 +233,10 @@ class DocumentProcessor:
         document_id: str,
         filename: str,
         text_by_page: Dict[int, str],
-        user_id: str = None
+        user_id: str = None,
+        ocr_used: bool = False,
+        ocr_pages: int = 0,
+        total_pages: int = 0
     ) -> List[DocumentChunk]:
         """
         Split text into overlapping chunks
@@ -154,6 +247,9 @@ class DocumentProcessor:
             filename: Original filename
             text_by_page: Text organized by page (for page attribution)
             user_id: ID of the user who uploaded the document
+            ocr_used: Whether OCR was used on this document
+            ocr_pages: Number of pages that required OCR
+            total_pages: Total number of pages in document
 
         Returns:
             List of DocumentChunk objects
@@ -183,7 +279,10 @@ class DocumentProcessor:
                 page=page,
                 chunk_id=chunk_id,
                 total_chunks=0,  # Will be updated later
-                user_id=user_id
+                user_id=user_id,
+                ocr_used=ocr_used,
+                ocr_pages=ocr_pages,
+                total_pages=total_pages
             )
             chunks.append(chunk)
 

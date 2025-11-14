@@ -10,3 +10,5 @@ numpy<2.0
 groq>=0.15.0
 clerk-backend-api==1.7.0
 PyJWT[crypto]>=2.9.0,<3.0.0
+Pillow>=10.0.0
+pytesseract>=0.3.10

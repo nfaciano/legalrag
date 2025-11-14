@@ -108,7 +108,10 @@ class VectorDatabase:
                     'document_id': doc_id,
                     'filename': metadata['filename'],
                     'total_chunks': metadata['total_chunks'],
-                    'upload_date': metadata.get('upload_date', 'unknown')
+                    'upload_date': metadata.get('upload_date', 'unknown'),
+                    'ocr_used': metadata.get('ocr_used', False),
+                    'ocr_pages': metadata.get('ocr_pages', 0),
+                    'total_pages': metadata.get('total_pages', 0)
                 }
 
         return list(documents.values())

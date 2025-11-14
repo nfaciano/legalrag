@@ -40,6 +40,9 @@ class UploadResponse(BaseModel):
     filename: str
     total_chunks: int
     message: str
+    ocr_used: bool = False
+    ocr_pages: int = 0
+    total_pages: int = 0
 
 
 class DocumentInfo(BaseModel):
@@ -48,6 +51,9 @@ class DocumentInfo(BaseModel):
     filename: str
     total_chunks: int
     upload_date: str
+    ocr_used: bool = False
+    ocr_pages: int = 0
+    total_pages: int = 0
 
 
 class DocumentListResponse(BaseModel):

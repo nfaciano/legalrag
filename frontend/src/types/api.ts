@@ -31,6 +31,9 @@ export interface UploadResponse {
   filename: string;
   total_chunks: number;
   message: string;
+  ocr_used?: boolean;
+  ocr_pages?: number;
+  total_pages?: number;
 }
 
 export interface DocumentInfo {
@@ -38,6 +41,9 @@ export interface DocumentInfo {
   filename: string;
   total_chunks: number;
   upload_date: string;
+  ocr_used?: boolean;
+  ocr_pages?: number;
+  total_pages?: number;
 }
 
 export interface DocumentListResponse {
@@ -48,4 +54,22 @@ export interface DocumentListResponse {
 export interface DeleteResponse {
   message: string;
   chunks_deleted: number;
+}
+
+export interface DocumentTextChunk {
+  chunk_id: string;
+  text: string;
+  page: number;
+  chunk_index: number;
+}
+
+export interface DocumentTextResponse {
+  document_id: string;
+  filename: string;
+  total_chunks: number;
+  ocr_used: boolean;
+  ocr_pages: number;
+  total_pages: number;
+  chunks: DocumentTextChunk[];
+  full_text: string;
 }

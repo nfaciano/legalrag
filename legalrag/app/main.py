@@ -175,6 +175,9 @@ async def upload_document(
         # os.remove(file_path)
 
         document_id = chunks[0].document_id
+        ocr_used = chunks[0].ocr_used
+        ocr_pages = chunks[0].ocr_pages
+        total_pages = chunks[0].total_pages
 
         logger.info(f"Successfully indexed document {document_id}")
 
@@ -182,7 +185,10 @@ async def upload_document(
             document_id=document_id,
             filename=file.filename,
             total_chunks=len(chunks),
-            message=f"Successfully indexed {file.filename} into {len(chunks)} chunks"
+            message=f"Successfully indexed {file.filename} into {len(chunks)} chunks",
+            ocr_used=ocr_used,
+            ocr_pages=ocr_pages,
+            total_pages=total_pages
         )
 
     except Exception as e:
@@ -302,6 +308,76 @@ async def delete_document(
     except Exception as e:
         logger.error(f"Error deleting document: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Error deleting document: {str(e)}")
+
+
+@app.get("/documents/{document_id}/text")
+async def get_document_text(
+    document_id: str,
+    user_id: str = Depends(get_current_user)
+):
+    """
+    Get all extracted text for a document (useful for verifying OCR quality)
+
+    Args:
+        document_id: ID of document to retrieve text for
+        user_id: Authenticated user ID (injected by dependency)
+
+    Returns:
+        Document text organized by chunks with metadata
+    """
+    logger.info(f"Text retrieval request for document: {document_id} from user: {user_id}")
+
+    try:
+        db = get_vector_db()
+
+        # Get all chunks for this document (filtered by user_id for security)
+        results = db.collection.get(
+            where={
+                "$and": [
+                    {"document_id": {"$eq": document_id}},
+                    {"user_id": {"$eq": user_id}}
+                ]
+            }
+        )
+
+        if not results['ids']:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Document {document_id} not found or you don't have permission to view it"
+            )
+
+        # Organize chunks
+        chunks = []
+        for i, (chunk_id, metadata) in enumerate(zip(results['ids'], results['metadatas'])):
+            chunks.append({
+                "chunk_id": chunk_id,
+                "text": results['documents'][i] if results['documents'] else "",
+                "page": metadata.get('page', 0),
+                "chunk_index": int(chunk_id.split('_chunk_')[-1]) if '_chunk_' in chunk_id else i
+            })
+
+        # Sort by chunk index to maintain order
+        chunks.sort(key=lambda x: x['chunk_index'])
+
+        # Get document metadata from first chunk
+        first_metadata = results['metadatas'][0]
+
+        return {
+            "document_id": document_id,
+            "filename": first_metadata.get('filename', 'unknown'),
+            "total_chunks": len(chunks),
+            "ocr_used": first_metadata.get('ocr_used', False),
+            "ocr_pages": first_metadata.get('ocr_pages', 0),
+            "total_pages": first_metadata.get('total_pages', 0),
+            "chunks": chunks,
+            "full_text": "\n\n---\n\n".join([chunk['text'] for chunk in chunks])
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error retrieving document text: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Error retrieving document text: {str(e)}")
 
 
 if __name__ == "__main__":

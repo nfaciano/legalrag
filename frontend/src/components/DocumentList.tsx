@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { FileText, Trash2, RefreshCw } from "lucide-react";
+import { FileText, Trash2, RefreshCw, ScanLine, Eye } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -53,6 +53,85 @@ export function DocumentList({ refreshTrigger }: DocumentListProps) {
     }
   };
 
+  const handleViewText = async (documentId: string) => {
+    try {
+      const textResponse = await apiClient.getDocumentText(documentId);
+
+      // Open text in new window
+      const newWindow = window.open('', '_blank');
+      if (newWindow) {
+        newWindow.document.write(`
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <title>${textResponse.filename} - Extracted Text</title>
+              <style>
+                body {
+                  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                  max-width: 800px;
+                  margin: 40px auto;
+                  padding: 20px;
+                  line-height: 1.6;
+                  background: #f5f5f5;
+                }
+                .header {
+                  background: white;
+                  padding: 20px;
+                  border-radius: 8px;
+                  margin-bottom: 20px;
+                  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                }
+                .header h1 {
+                  margin: 0 0 10px 0;
+                  color: #333;
+                }
+                .meta {
+                  color: #666;
+                  font-size: 14px;
+                }
+                .warning {
+                  background: #fff3cd;
+                  border-left: 4px solid #ffc107;
+                  padding: 12px;
+                  margin: 20px 0;
+                  border-radius: 4px;
+                }
+                .content {
+                  background: white;
+                  padding: 30px;
+                  border-radius: 8px;
+                  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                  white-space: pre-wrap;
+                  word-wrap: break-word;
+                }
+              </style>
+            </head>
+            <body>
+              <div class="header">
+                <h1>${textResponse.filename}</h1>
+                <div class="meta">
+                  Document ID: ${textResponse.document_id} |
+                  Total Chunks: ${textResponse.total_chunks} |
+                  Pages: ${textResponse.total_pages}
+                </div>
+                ${textResponse.ocr_used ? `
+                  <div class="warning">
+                    ⚠️ <strong>Scanned Document:</strong> OCR was used on ${textResponse.ocr_pages}/${textResponse.total_pages} pages.
+                    Text extraction may not be 100% accurate.
+                  </div>
+                ` : ''}
+              </div>
+              <div class="content">${textResponse.full_text.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>
+            </body>
+          </html>
+        `);
+        newWindow.document.close();
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load document text");
+    }
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -99,27 +178,51 @@ export function DocumentList({ refreshTrigger }: DocumentListProps) {
                 <div className="flex items-center gap-3 flex-1 min-w-0">
                   <FileText className="h-5 w-5 text-primary flex-shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium truncate">{doc.filename}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium truncate">{doc.filename}</p>
+                      {doc.ocr_used && (
+                        <Badge variant="secondary" className="flex-shrink-0 gap-1">
+                          <ScanLine className="h-3 w-3" />
+                          <span>Scanned</span>
+                        </Badge>
+                      )}
+                    </div>
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                       <span>{doc.total_chunks} chunks</span>
                       <span>•</span>
                       <span>
                         {new Date(doc.upload_date).toLocaleDateString()}
                       </span>
+                      {doc.ocr_used && doc.ocr_pages && doc.total_pages && (
+                        <>
+                          <span>•</span>
+                          <span>OCR: {doc.ocr_pages}/{doc.total_pages} pages</span>
+                        </>
+                      )}
                     </div>
                   </div>
                   <Badge variant="outline" className="flex-shrink-0">
                     {doc.document_id.slice(0, 8)}
                   </Badge>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => handleDelete(doc.document_id)}
-                  className="ml-2 flex-shrink-0"
-                >
-                  <Trash2 className="h-4 w-4 text-destructive" />
-                </Button>
+                <div className="flex items-center gap-1 ml-2 flex-shrink-0">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleViewText(doc.document_id)}
+                    title="View extracted text"
+                  >
+                    <Eye className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleDelete(doc.document_id)}
+                    title="Delete document"
+                  >
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
+                </div>
               </div>
             ))}
           </div>
