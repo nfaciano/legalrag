@@ -10,17 +10,39 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000
 
 export class ApiClient {
   private baseUrl: string;
+  private getToken?: () => Promise<string | null>;
 
-  constructor(baseUrl: string = API_BASE_URL) {
+  constructor(baseUrl: string = API_BASE_URL, getToken?: () => Promise<string | null>) {
     this.baseUrl = baseUrl;
+    this.getToken = getToken;
+  }
+
+  private async getHeaders(includeContentType = false): Promise<HeadersInit> {
+    const headers: HeadersInit = {};
+
+    if (includeContentType) {
+      headers["Content-Type"] = "application/json";
+    }
+
+    if (this.getToken) {
+      const token = await this.getToken();
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+    }
+
+    return headers;
   }
 
   async uploadDocument(file: File): Promise<UploadResponse> {
     const formData = new FormData();
     formData.append("file", file);
 
+    const headers = await this.getHeaders();
+
     const response = await fetch(`${this.baseUrl}/upload`, {
       method: "POST",
+      headers,
       body: formData,
     });
 
@@ -33,11 +55,11 @@ export class ApiClient {
   }
 
   async searchDocuments(request: SearchRequest): Promise<SearchResponse> {
+    const headers = await this.getHeaders(true);
+
     const response = await fetch(`${this.baseUrl}/search`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers,
       body: JSON.stringify(request),
     });
 
@@ -50,7 +72,11 @@ export class ApiClient {
   }
 
   async listDocuments(): Promise<DocumentListResponse> {
-    const response = await fetch(`${this.baseUrl}/documents`);
+    const headers = await this.getHeaders();
+
+    const response = await fetch(`${this.baseUrl}/documents`, {
+      headers,
+    });
 
     if (!response.ok) {
       const error = await response.text();
@@ -61,8 +87,11 @@ export class ApiClient {
   }
 
   async deleteDocument(documentId: string): Promise<DeleteResponse> {
+    const headers = await this.getHeaders();
+
     const response = await fetch(`${this.baseUrl}/documents/${documentId}`, {
       method: "DELETE",
+      headers,
     });
 
     if (!response.ok) {

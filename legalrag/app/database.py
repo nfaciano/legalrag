@@ -58,7 +58,8 @@ class VectorDatabase:
     def search(
         self,
         query_embedding: List[float],
-        top_k: int = 5
+        top_k: int = 5,
+        where: Dict[str, Any] = None
     ) -> Dict[str, Any]:
         """
         Search for similar documents
@@ -66,25 +67,37 @@ class VectorDatabase:
         Args:
             query_embedding: Embedding vector of the query
             top_k: Number of results to return
+            where: Optional filter conditions (e.g., {"user_id": "user_123"})
 
         Returns:
             Dictionary with results including documents, metadatas, and distances
         """
-        results = self.collection.query(
-            query_embeddings=[query_embedding],
-            n_results=top_k
-        )
+        query_params = {
+            "query_embeddings": [query_embedding],
+            "n_results": top_k
+        }
+
+        if where:
+            query_params["where"] = where
+
+        results = self.collection.query(**query_params)
         return results
 
-    def get_all_documents(self) -> List[Dict[str, Any]]:
+    def get_all_documents(self, where: Dict[str, Any] = None) -> List[Dict[str, Any]]:
         """
         Get information about all indexed documents
+
+        Args:
+            where: Optional filter conditions (e.g., {"user_id": "user_123"})
 
         Returns:
             List of document metadata
         """
         # Get all items from collection
-        results = self.collection.get()
+        if where:
+            results = self.collection.get(where=where)
+        else:
+            results = self.collection.get()
 
         # Group by document_id to get unique documents
         documents = {}
@@ -100,20 +113,23 @@ class VectorDatabase:
 
         return list(documents.values())
 
-    def delete_document(self, document_id: str) -> int:
+    def delete_document(self, document_id: str, user_id: str = None) -> int:
         """
         Delete all chunks of a document
 
         Args:
             document_id: ID of document to delete
+            user_id: Optional user ID to ensure only owner can delete
 
         Returns:
             Number of chunks deleted
         """
         # Get all IDs for this document
-        results = self.collection.get(
-            where={"document_id": document_id}
-        )
+        where_filter = {"document_id": document_id}
+        if user_id:
+            where_filter["user_id"] = user_id
+
+        results = self.collection.get(where=where_filter)
 
         if not results['ids']:
             return 0

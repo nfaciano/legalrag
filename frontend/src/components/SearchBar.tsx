@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { apiClient } from "@/lib/api";
+import { useApi } from "@/lib/useApi";
 import type { SearchResponse } from "@/types/api";
 
 interface SearchBarProps {
@@ -12,6 +12,7 @@ interface SearchBarProps {
 }
 
 export function SearchBar({ onSearchComplete }: SearchBarProps) {
+  const apiClient = useApi();
   const [query, setQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);

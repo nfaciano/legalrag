@@ -17,7 +17,8 @@ class DocumentChunk:
         filename: str,
         page: int,
         chunk_id: str,
-        total_chunks: int
+        total_chunks: int,
+        user_id: str = None
     ):
         self.text = text
         self.document_id = document_id
@@ -25,10 +26,11 @@ class DocumentChunk:
         self.page = page
         self.chunk_id = chunk_id
         self.total_chunks = total_chunks
+        self.user_id = user_id
 
     def to_metadata(self) -> Dict[str, Any]:
         """Convert to metadata dict for storage"""
-        return {
+        metadata = {
             "document_id": self.document_id,
             "filename": self.filename,
             "page": self.page,
@@ -36,6 +38,9 @@ class DocumentChunk:
             "total_chunks": self.total_chunks,
             "upload_date": datetime.now().isoformat()
         }
+        if self.user_id:
+            metadata["user_id"] = self.user_id
+        return metadata
 
 
 class DocumentProcessor:
@@ -56,18 +61,19 @@ class DocumentProcessor:
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
 
-    def process_pdf(self, pdf_path: str, filename: str) -> List[DocumentChunk]:
+    def process_pdf(self, pdf_path: str, filename: str, user_id: str = None) -> List[DocumentChunk]:
         """
         Process a PDF file into chunks
 
         Args:
             pdf_path: Path to the PDF file
             filename: Original filename
+            user_id: ID of the user who uploaded the document
 
         Returns:
             List of DocumentChunk objects
         """
-        logger.info(f"Processing PDF: {filename}")
+        logger.info(f"Processing PDF: {filename} for user: {user_id}")
 
         # Generate document ID from filename and content
         document_id = self._generate_document_id(filename)
@@ -79,7 +85,7 @@ class DocumentProcessor:
         full_text = " ".join([text for text in text_by_page.values()])
 
         # Create chunks
-        chunks = self._create_chunks(full_text, document_id, filename, text_by_page)
+        chunks = self._create_chunks(full_text, document_id, filename, text_by_page, user_id)
 
         logger.info(f"Created {len(chunks)} chunks from {filename}")
         return chunks
@@ -115,7 +121,8 @@ class DocumentProcessor:
         text: str,
         document_id: str,
         filename: str,
-        text_by_page: Dict[int, str]
+        text_by_page: Dict[int, str],
+        user_id: str = None
     ) -> List[DocumentChunk]:
         """
         Split text into overlapping chunks
@@ -125,6 +132,7 @@ class DocumentProcessor:
             document_id: Unique document identifier
             filename: Original filename
             text_by_page: Text organized by page (for page attribution)
+            user_id: ID of the user who uploaded the document
 
         Returns:
             List of DocumentChunk objects
@@ -153,7 +161,8 @@ class DocumentProcessor:
                 filename=filename,
                 page=page,
                 chunk_id=chunk_id,
-                total_chunks=0  # Will be updated later
+                total_chunks=0,  # Will be updated later
+                user_id=user_id
             )
             chunks.append(chunk)
 

@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { apiClient } from "@/lib/api";
+import { useApi } from "@/lib/useApi";
 import type { DocumentInfo } from "@/types/api";
 
 interface DocumentListProps {
@@ -17,6 +17,7 @@ interface DocumentListProps {
 }
 
 export function DocumentList({ refreshTrigger }: DocumentListProps) {
+  const apiClient = useApi();
   const [documents, setDocuments] = useState<DocumentInfo[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

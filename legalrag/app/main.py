@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import logging
@@ -23,6 +23,7 @@ from app.database import get_vector_db
 from app.embeddings import get_embedding_model
 from app.document_processor import get_document_processor
 from app.search import get_search_engine
+from app.auth import get_current_user
 
 # Configure logging
 logging.basicConfig(
@@ -100,17 +101,21 @@ async def root():
 
 
 @app.post("/upload", response_model=UploadResponse)
-async def upload_document(file: UploadFile = File(...)):
+async def upload_document(
+    file: UploadFile = File(...),
+    user_id: str = Depends(get_current_user)
+):
     """
     Upload and index a PDF document
 
     Args:
         file: PDF file to upload
+        user_id: Authenticated user ID (injected by dependency)
 
     Returns:
         UploadResponse with document ID and metadata
     """
-    logger.info(f"Received upload request: {file.filename}")
+    logger.info(f"Received upload request: {file.filename} from user: {user_id}")
 
     # Validate file type
     if not file.filename.endswith('.pdf'):
@@ -126,7 +131,7 @@ async def upload_document(file: UploadFile = File(...)):
 
         # Process document
         processor = get_document_processor()
-        chunks = processor.process_pdf(str(file_path), file.filename)
+        chunks = processor.process_pdf(str(file_path), file.filename, user_id)
 
         if not chunks:
             raise HTTPException(status_code=400, detail="No text extracted from PDF")
@@ -165,17 +170,21 @@ async def upload_document(file: UploadFile = File(...)):
 
 
 @app.post("/search", response_model=SearchResponse)
-async def search_documents(request: SearchRequest):
+async def search_documents(
+    request: SearchRequest,
+    user_id: str = Depends(get_current_user)
+):
     """
     Perform semantic search over indexed documents with optional reranking and answer synthesis
 
     Args:
         request: SearchRequest with query, top_k, use_reranking, and synthesize_answer flags
+        user_id: Authenticated user ID (injected by dependency)
 
     Returns:
         SearchResponse with ranked results and optional synthesized answer
     """
-    logger.info(f"Search request: '{request.query}' (top_k={request.top_k}, reranking={request.use_reranking}, synthesis={request.synthesize_answer})")
+    logger.info(f"Search request from user {user_id}: '{request.query}' (top_k={request.top_k}, reranking={request.use_reranking}, synthesis={request.synthesize_answer})")
 
     try:
         # Perform search with optional reranking
@@ -183,7 +192,8 @@ async def search_documents(request: SearchRequest):
         results = search_engine.search(
             request.query,
             top_k=request.top_k,
-            use_reranking=request.use_reranking
+            use_reranking=request.use_reranking,
+            user_id=user_id
         )
 
         # Optionally synthesize answer
@@ -206,18 +216,23 @@ async def search_documents(request: SearchRequest):
 
 
 @app.get("/documents", response_model=DocumentListResponse)
-async def list_documents():
+async def list_documents(user_id: str = Depends(get_current_user)):
     """
-    List all indexed documents
+    List all indexed documents for the authenticated user
+
+    Args:
+        user_id: Authenticated user ID (injected by dependency)
 
     Returns:
-        DocumentListResponse with all document metadata
+        DocumentListResponse with all document metadata for this user
     """
     try:
         db = get_vector_db()
-        documents_data = db.get_all_documents()
+        documents_data = db.get_all_documents(where={"user_id": user_id})
 
         documents = [DocumentInfo(**doc) for doc in documents_data]
+
+        logger.info(f"User {user_id} has {len(documents)} documents")
 
         return DocumentListResponse(
             documents=documents,
@@ -230,24 +245,31 @@ async def list_documents():
 
 
 @app.delete("/documents/{document_id}")
-async def delete_document(document_id: str):
+async def delete_document(
+    document_id: str,
+    user_id: str = Depends(get_current_user)
+):
     """
-    Delete a document and all its chunks
+    Delete a document and all its chunks (user can only delete their own documents)
 
     Args:
         document_id: ID of document to delete
+        user_id: Authenticated user ID (injected by dependency)
 
     Returns:
         Success message with number of chunks deleted
     """
-    logger.info(f"Delete request for document: {document_id}")
+    logger.info(f"Delete request for document: {document_id} from user: {user_id}")
 
     try:
         db = get_vector_db()
-        chunks_deleted = db.delete_document(document_id)
+        chunks_deleted = db.delete_document(document_id, user_id=user_id)
 
         if chunks_deleted == 0:
-            raise HTTPException(status_code=404, detail=f"Document {document_id} not found")
+            raise HTTPException(
+                status_code=404,
+                detail=f"Document {document_id} not found or you don't have permission to delete it"
+            )
 
         return {
             "message": f"Successfully deleted document {document_id}",

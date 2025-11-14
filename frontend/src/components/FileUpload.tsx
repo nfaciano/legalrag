@@ -2,7 +2,7 @@ import { useState, useCallback } from "react";
 import { Upload, FileText, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { apiClient } from "@/lib/api";
+import { useApi } from "@/lib/useApi";
 import type { UploadResponse } from "@/types/api";
 
 interface FileUploadProps {
@@ -10,6 +10,7 @@ interface FileUploadProps {
 }
 
 export function FileUpload({ onUploadComplete }: FileUploadProps) {
+  const apiClient = useApi();
   const [isDragging, setIsDragging] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -99,11 +100,11 @@ export function FileUpload({ onUploadComplete }: FileUploadProps) {
                 className="hidden"
                 id="file-upload"
               />
-              <label htmlFor="file-upload">
-                <Button asChild variant="outline">
-                  <span>Select PDF File</span>
-                </Button>
-              </label>
+              <Button asChild variant="outline">
+                <label htmlFor="file-upload" className="cursor-pointer">
+                  Select PDF File
+                </label>
+              </Button>
             </>
           ) : (
             <div className="space-y-4">
