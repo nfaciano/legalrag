@@ -124,10 +124,16 @@ class VectorDatabase:
         Returns:
             Number of chunks deleted
         """
-        # Get all IDs for this document
-        where_filter = {"document_id": document_id}
+        # Get all IDs for this document with proper ChromaDB where syntax
         if user_id:
-            where_filter["user_id"] = user_id
+            where_filter = {
+                "$and": [
+                    {"document_id": document_id},
+                    {"user_id": user_id}
+                ]
+            }
+        else:
+            where_filter = {"document_id": document_id}
 
         results = self.collection.get(where=where_filter)
 

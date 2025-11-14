@@ -121,13 +121,28 @@ async def upload_document(
     if not file.filename.endswith('.pdf'):
         raise HTTPException(status_code=400, detail="Only PDF files are supported")
 
+    # Validate file size (100MB limit)
+    MAX_FILE_SIZE = 100 * 1024 * 1024  # 100MB in bytes
+
     try:
+        # Read file content to check size
+        file_content = await file.read()
+        if len(file_content) > MAX_FILE_SIZE:
+            raise HTTPException(
+                status_code=413,
+                detail=f"File too large. Maximum size is 100MB, got {len(file_content) / 1024 / 1024:.1f}MB"
+            )
+
+        # Validate it's actually a PDF (check magic bytes)
+        if not file_content.startswith(b'%PDF'):
+            raise HTTPException(status_code=400, detail="Invalid PDF file")
+
         # Save uploaded file
         file_path = UPLOAD_DIR / file.filename
         with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
+            buffer.write(file_content)
 
-        logger.info(f"Saved file to {file_path}")
+        logger.info(f"Saved file to {file_path} ({len(file_content) / 1024 / 1024:.1f}MB)")
 
         # Process document
         processor = get_document_processor()
