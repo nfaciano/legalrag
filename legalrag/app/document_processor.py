@@ -121,14 +121,14 @@ class DocumentProcessor:
 
     def __init__(
         self,
-        chunk_size: int = 500,
-        chunk_overlap: int = 50
+        chunk_size: int = 250,
+        chunk_overlap: int = 25
     ):
         """
         Initialize document processor
 
         Args:
-            chunk_size: Target number of words per chunk
+            chunk_size: Target number of words per chunk (reduced to 250 for better precision)
             chunk_overlap: Number of words to overlap between chunks
         """
         self.chunk_size = chunk_size
