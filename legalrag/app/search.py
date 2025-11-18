@@ -64,9 +64,11 @@ class SearchEngine:
                 metadata = results['metadatas'][0][i]
                 distance = results['distances'][0][i]
 
-                # Convert distance to similarity score (cosine similarity)
-                # ChromaDB returns L2 distance, convert to similarity
-                similarity = 1.0 / (1.0 + distance)
+                # Convert cosine distance to similarity score
+                # ChromaDB returns cosine distance where: distance = 1 - cosine_similarity
+                # So: cosine_similarity = 1 - distance
+                # Result range: -1 (opposite) to 1 (identical), typically 0-1 for relevant docs
+                similarity = 1.0 - distance
 
                 search_result = SearchResult(
                     text=text,

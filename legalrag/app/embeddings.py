@@ -8,12 +8,13 @@ logger = logging.getLogger(__name__)
 class EmbeddingModel:
     """Wrapper for sentence-transformers embedding model"""
 
-    def __init__(self, model_name: str = "all-MiniLM-L6-v2"):
+    def __init__(self, model_name: str = "multi-qa-MiniLM-L6-cos-v1"):
         """
         Initialize the embedding model
 
         Args:
             model_name: HuggingFace model name for embeddings
+                       Default: multi-qa-MiniLM-L6-cos-v1 (optimized for question-answering retrieval)
         """
         logger.info(f"Loading embedding model: {model_name}")
         self.model = SentenceTransformer(model_name)

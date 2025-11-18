@@ -34,7 +34,8 @@ class Reranker:
             top_k: Number of top results to return (None = return all)
 
         Returns:
-            List of tuples (index, score) sorted by relevance score
+            List of tuples (index, normalized_score) sorted by relevance score
+            Scores are normalized to 0-1 range using min-max normalization
         """
         if not documents:
             return []
@@ -42,11 +43,22 @@ class Reranker:
         # Create query-document pairs
         pairs = [[query, doc] for doc in documents]
 
-        # Get relevance scores from cross-encoder
+        # Get relevance scores from cross-encoder (can be negative, typically -10 to +10)
         scores = self.model.predict(pairs)
 
-        # Create list of (original_index, score) tuples
-        results = [(idx, float(score)) for idx, score in enumerate(scores)]
+        # Normalize scores to 0-1 range using min-max normalization
+        min_score = float(min(scores))
+        max_score = float(max(scores))
+
+        if max_score == min_score:
+            # All scores are the same, assign 0.5 to all
+            normalized_scores = [0.5] * len(scores)
+        else:
+            normalized_scores = [(float(score) - min_score) / (max_score - min_score)
+                                 for score in scores]
+
+        # Create list of (original_index, normalized_score) tuples
+        results = [(idx, normalized_scores[idx]) for idx in range(len(scores))]
 
         # Sort by score descending
         results.sort(key=lambda x: x[1], reverse=True)

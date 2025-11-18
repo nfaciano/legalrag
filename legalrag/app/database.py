@@ -23,10 +23,10 @@ class VectorDatabase:
         logger.info(f"Initializing ChromaDB at {persist_directory}")
         self.client = chromadb.PersistentClient(path=persist_directory)
 
-        # Get or create collection
+        # Get or create collection with cosine similarity (better for semantic search)
         self.collection = self.client.get_or_create_collection(
             name="legal_documents",
-            metadata={"description": "Legal document chunks with embeddings"}
+            metadata={"description": "Legal document chunks with embeddings", "hnsw:space": "cosine"}
         )
         logger.info(f"Collection 'legal_documents' ready. Total documents: {self.collection.count()}")
 
