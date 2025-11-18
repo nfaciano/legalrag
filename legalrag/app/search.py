@@ -77,29 +77,11 @@ class SearchEngine:
                 )
                 search_results.append(search_result)
 
-        # Apply reranking if enabled
-        if should_rerank and self.reranker and len(search_results) > 0:
-            logger.info(f"Reranking {len(search_results)} results...")
+        # Sort by cosine similarity (what we're displaying to users)
+        search_results.sort(key=lambda x: x.similarity_score, reverse=True)
 
-            # Extract texts for reranking
-            texts = [result.text for result in search_results]
-
-            # Get reranked indices and scores
-            reranked = self.reranker.rerank(query, texts, top_k=top_k)
-
-            # Reorder results based on reranking scores
-            reranked_results = []
-            for idx, rerank_score in reranked:
-                result = search_results[idx]
-                # Update similarity score with reranking score (normalized to 0-1)
-                result.similarity_score = round(rerank_score, 4)
-                reranked_results.append(result)
-
-            search_results = reranked_results
-            logger.info(f"Reranking complete, returning top {len(search_results)} results")
-        else:
-            # Just return top_k if no reranking
-            search_results = search_results[:top_k]
+        # Return top_k results
+        search_results = search_results[:top_k]
 
         logger.info(f"Returning {len(search_results)} results")
         return search_results
