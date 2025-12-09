@@ -10,12 +10,19 @@ import type {
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 
 export class ApiClient {
-  private baseUrl: string;
-  private getToken?: () => Promise<string | null>;
+  public baseURL: string;
+  private getTokenFn?: () => Promise<string | null>;
 
   constructor(baseUrl: string = API_BASE_URL, getToken?: () => Promise<string | null>) {
-    this.baseUrl = baseUrl;
-    this.getToken = getToken;
+    this.baseURL = baseUrl;
+    this.getTokenFn = getToken;
+  }
+
+  async getToken(): Promise<string | null> {
+    if (this.getTokenFn) {
+      return await this.getTokenFn();
+    }
+    return null;
   }
 
   private async getHeaders(includeContentType = false): Promise<HeadersInit> {
@@ -25,8 +32,8 @@ export class ApiClient {
       headers["Content-Type"] = "application/json";
     }
 
-    if (this.getToken) {
-      const token = await this.getToken();
+    if (this.getTokenFn) {
+      const token = await this.getTokenFn();
       if (token) {
         headers["Authorization"] = `Bearer ${token}`;
       }
@@ -35,13 +42,104 @@ export class ApiClient {
     return headers;
   }
 
+  // Generic HTTP methods
+  async get<T>(path: string): Promise<T> {
+    const headers = await this.getHeaders();
+    const response = await fetch(`${this.baseURL}${path}`, { headers });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`GET ${path} failed: ${error}`);
+    }
+
+    return response.json();
+  }
+
+  async post<T>(path: string, data: any): Promise<T> {
+    const headers = await this.getHeaders(true);
+    const response = await fetch(`${this.baseURL}${path}`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`POST ${path} failed: ${error}`);
+    }
+
+    return response.json();
+  }
+
+  async put<T>(path: string, data: any): Promise<T> {
+    const headers = await this.getHeaders(true);
+    const response = await fetch(`${this.baseURL}${path}`, {
+      method: "PUT",
+      headers,
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`PUT ${path} failed: ${error}`);
+    }
+
+    return response.json();
+  }
+
+  async upload<T>(path: string, formData: FormData): Promise<T> {
+    const headers = await this.getHeaders();
+    const response = await fetch(`${this.baseURL}${path}`, {
+      method: "POST",
+      headers,
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Upload to ${path} failed: ${error}`);
+    }
+
+    return response.json();
+  }
+
+  async delete(path: string): Promise<any> {
+    const headers = await this.getHeaders();
+    const response = await fetch(`${this.baseURL}${path}`, {
+      method: "DELETE",
+      headers,
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`DELETE ${path} failed: ${error}`);
+    }
+
+    return response.json();
+  }
+
+  async downloadFile(path: string): Promise<Response> {
+    const headers = await this.getHeaders();
+    const response = await fetch(`${this.baseURL}${path}`, {
+      method: "GET",
+      headers,
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Download from ${path} failed: ${error}`);
+    }
+
+    return response;
+  }
+
   async uploadDocument(file: File): Promise<UploadResponse> {
     const formData = new FormData();
     formData.append("file", file);
 
     const headers = await this.getHeaders();
 
-    const response = await fetch(`${this.baseUrl}/upload`, {
+    const response = await fetch(`${this.baseURL}/upload`, {
       method: "POST",
       headers,
       body: formData,
@@ -58,7 +156,7 @@ export class ApiClient {
   async searchDocuments(request: SearchRequest): Promise<SearchResponse> {
     const headers = await this.getHeaders(true);
 
-    const response = await fetch(`${this.baseUrl}/search`, {
+    const response = await fetch(`${this.baseURL}/search`, {
       method: "POST",
       headers,
       body: JSON.stringify(request),
@@ -75,7 +173,7 @@ export class ApiClient {
   async listDocuments(): Promise<DocumentListResponse> {
     const headers = await this.getHeaders();
 
-    const response = await fetch(`${this.baseUrl}/documents`, {
+    const response = await fetch(`${this.baseURL}/documents`, {
       headers,
     });
 
@@ -90,7 +188,7 @@ export class ApiClient {
   async deleteDocument(documentId: string): Promise<DeleteResponse> {
     const headers = await this.getHeaders();
 
-    const response = await fetch(`${this.baseUrl}/documents/${documentId}`, {
+    const response = await fetch(`${this.baseURL}/documents/${documentId}`, {
       method: "DELETE",
       headers,
     });
@@ -106,7 +204,7 @@ export class ApiClient {
   async getDocumentText(documentId: string): Promise<DocumentTextResponse> {
     const headers = await this.getHeaders();
 
-    const response = await fetch(`${this.baseUrl}/documents/${documentId}/text`, {
+    const response = await fetch(`${this.baseURL}/documents/${documentId}/text`, {
       headers,
     });
 

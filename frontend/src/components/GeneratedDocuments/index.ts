@@ -1,0 +1,1 @@
+export { GeneratedDocuments } from './GeneratedDocuments';

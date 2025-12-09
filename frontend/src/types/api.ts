@@ -73,3 +73,66 @@ export interface DocumentTextResponse {
   chunks: DocumentTextChunk[];
   full_text: string;
 }
+
+// Document Generation Types
+
+export interface LetterheadInfo {
+  letterhead_id: string;
+  original_filename: string;
+  file_size: number;
+  upload_date: string;
+}
+
+export interface LetterheadUploadResponse {
+  letterhead_id: string;
+  original_filename: string;
+  file_size: number;
+  upload_date: string;
+}
+
+export interface LetterheadListResponse {
+  letterheads: LetterheadInfo[];
+  total_letterheads: number;
+}
+
+export interface DocumentGenerationRequest {
+  letterhead_id?: string | null;
+  document_type?: string;
+
+  // Letter fields
+  date: string;
+  recipient_name: string;
+  recipient_company?: string | null;
+  recipient_address: string;
+  subject?: string | null;
+  salutation: string;
+  body_text?: string | null;
+  closing?: string;
+  signature_name: string;
+  initials: string;
+  enclosures?: string | null;
+
+  // AI generation fields
+  ai_generate_body?: boolean;
+  ai_prompt?: string | null;
+}
+
+export interface GeneratedDocumentResponse {
+  document_id: string;
+  filename: string;
+  file_size: number;
+  generated_at: string;
+  download_url: string;
+}
+
+export interface GeneratedDocumentInfo {
+  document_id: string;
+  filename: string;
+  file_size: number;
+  generated_at: string;
+}
+
+export interface GeneratedDocumentListResponse {
+  documents: GeneratedDocumentInfo[];
+  total_documents: number;
+}

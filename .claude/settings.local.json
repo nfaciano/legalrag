@@ -4,7 +4,17 @@
       "Bash(npm create:*)",
       "Bash(npm install)",
       "Bash(npm install:*)",
-      "Bash(npx tailwindcss init -p)"
+      "Bash(npx tailwindcss init -p)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$(cat <<''EOF''\nReduce chunk size from 500 to 250 words for better retrieval precision\n\n- Change chunk_size from 500 → 250 words\n- Change chunk_overlap from 50 → 25 words (proportional)\n- Improves semantic similarity scores for specific queries\n- Creates more focused chunks with better topic isolation\n- Trade-off: ~2x more chunks, but much better precision\n\nBefore: 500-word chunks mixed multiple topics (security deposit + utilities + fees)\nAfter: 250-word chunks focus on single topics (just security deposit)\n\nThis fixes the issue where queries like \"what 's the security deposit\" were\ngetting negative similarity scores despite containing the exact answer.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(git push:*)",
+      "Bash(python:*)",
+      "Bash(pip install:*)",
+      "Bash(ls:*)",
+      "Bash(pkill:*)",
+      "Bash(python3:*)",
+      "Bash(npm run build:*)",
+      "Bash(cat:*)"
     ],
     "deny": [],
     "ask": []
