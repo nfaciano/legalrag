@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 class DocumentBuilder:
     """Builds complete documents from Word templates."""
 
-    def __init__(self, output_dir: str = "./uploads/generated"):
+    def __init__(self, output_dir: str = "./data/uploads/generated"):
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.template_manager = get_template_manager()

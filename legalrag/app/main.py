@@ -80,8 +80,8 @@ app.add_middleware(
 )
 
 # Ensure uploads directory exists
-UPLOAD_DIR = Path("./uploads")
-UPLOAD_DIR.mkdir(exist_ok=True)
+UPLOAD_DIR = Path("./data/uploads")
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 
 @app.on_event("startup")
@@ -690,7 +690,7 @@ async def list_generated_documents(user_id: str = Depends(get_current_user)):
     """
     try:
         # List files in user's generated documents directory
-        user_output_dir = Path("./uploads/generated") / user_id
+        user_output_dir = Path("./data/uploads/generated") / user_id
 
         if not user_output_dir.exists():
             return GeneratedDocumentListResponse(documents=[], total_documents=0)
@@ -742,7 +742,7 @@ async def download_generated_document(
 
     try:
         # Find file in user's directory
-        user_output_dir = Path("./uploads/generated") / user_id
+        user_output_dir = Path("./data/uploads/generated") / user_id
 
         # Find file that contains document_id (could be .pdf or .docx)
         matching_files = list(user_output_dir.glob(f"*{document_id}*.pdf")) + \
@@ -784,7 +784,7 @@ async def delete_generated_document(
     """Delete a generated document for the authenticated user"""
     try:
         # Find and delete the file
-        output_dir = Path("uploads/generated") / user_id
+        output_dir = Path("./data/uploads/generated") / user_id
         if not output_dir.exists():
             raise HTTPException(status_code=404, detail="No documents found")
 
@@ -815,7 +815,7 @@ async def delete_all_generated_documents(
     """Delete all generated documents for the authenticated user"""
     try:
         # Find user's output directory
-        output_dir = Path("uploads/generated") / user_id
+        output_dir = Path("./data/uploads/generated") / user_id
         if not output_dir.exists():
             return {"message": "No documents to delete", "deleted_count": 0}
 

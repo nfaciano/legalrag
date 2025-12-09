@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 class EnvelopeBuilder:
     """Builds print-ready envelopes."""
 
-    def __init__(self, output_dir: str = "./uploads/generated"):
+    def __init__(self, output_dir: str = "./data/uploads/generated"):
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.envelope_generator = get_envelope_generator()

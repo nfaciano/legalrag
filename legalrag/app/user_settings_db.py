@@ -12,7 +12,7 @@ from contextlib import contextmanager
 logger = logging.getLogger(__name__)
 
 # Database file location
-DB_PATH = Path("./uploads/user_settings.db")
+DB_PATH = Path("./data/uploads/user_settings.db")
 
 
 def init_user_settings_db():

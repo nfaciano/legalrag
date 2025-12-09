@@ -18,7 +18,7 @@ MAX_TEMPLATE_SIZE = 10 * 1024 * 1024  # 10MB
 class TemplateManager:
     """Manages Word document template storage and retrieval."""
 
-    def __init__(self, storage_dir: str = "./uploads/templates"):
+    def __init__(self, storage_dir: str = "./data/uploads/templates"):
         self.storage_dir = Path(storage_dir)
         self.storage_dir.mkdir(parents=True, exist_ok=True)
         self.metadata_file = self.storage_dir / "metadata.json"

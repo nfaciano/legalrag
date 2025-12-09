@@ -18,7 +18,7 @@ MAX_IMAGE_SIZE = 5 * 1024 * 1024  # 5MB
 class LetterheadManager:
     """Manages letterhead image storage and retrieval."""
 
-    def __init__(self, storage_dir: str = "./uploads/letterheads"):
+    def __init__(self, storage_dir: str = "./data/uploads/letterheads"):
         self.storage_dir = Path(storage_dir)
         self.storage_dir.mkdir(parents=True, exist_ok=True)
         self.metadata_file = self.storage_dir / "metadata.json"

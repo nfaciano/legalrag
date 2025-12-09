@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 class VectorDatabase:
     """ChromaDB vector database manager"""
 
-    def __init__(self, persist_directory: str = "./chroma_db"):
+    def __init__(self, persist_directory: str = "./data/chroma_db"):
         """
         Initialize ChromaDB client
 
