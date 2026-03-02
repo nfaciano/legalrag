@@ -9,7 +9,7 @@ import { Alert, AlertDescription } from '../ui/alert';
 import { ConfirmDialog } from '../ui/confirm-dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import {
-  Gavel, Plus, Trash2, Loader2, Sparkles, Edit3, FileCheck, ChevronDown, ChevronUp, X,
+  Gavel, Plus, Trash2, Loader2, Sparkles, Edit3, FileCheck, ChevronUp, X,
   Pilcrow, List, ListOrdered
 } from 'lucide-react';
 import type {
