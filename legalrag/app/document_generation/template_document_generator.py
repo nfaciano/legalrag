@@ -87,19 +87,27 @@ class TemplateDocumentGenerator:
 
             doc.add_paragraph()  # blank line
 
-            # Closing (right-aligned / heavily indented)
+            # Closing and signature block — indented from left (standard business letter)
+            sig_indent = Inches(3.5)
+
             closing_para = doc.add_paragraph(fields.get('closing', 'Sincerely,'))
-            closing_para.alignment = 2  # Right alignment
-            doc.add_paragraph()
-            doc.add_paragraph()
-            doc.add_paragraph()
+            closing_para.paragraph_format.left_indent = sig_indent
+            closing_para.paragraph_format.space_after = Pt(0)
 
-            # Signature name (right-aligned / heavily indented)
+            # Signature space (3 blank lines)
+            for _ in range(3):
+                spacer = doc.add_paragraph()
+                spacer.paragraph_format.left_indent = sig_indent
+                spacer.paragraph_format.space_before = Pt(0)
+                spacer.paragraph_format.space_after = Pt(0)
+
+            # Signature name
             signature_para = doc.add_paragraph(fields.get('signature_name', ''))
-            signature_para.alignment = 2  # Right alignment
-            doc.add_paragraph()
+            signature_para.paragraph_format.left_indent = sig_indent
+            signature_para.paragraph_format.space_before = Pt(0)
+            signature_para.paragraph_format.space_after = Pt(12)
 
-            # Initials (left-aligned)
+            # Initials (left-aligned, back at left margin)
             doc.add_paragraph(fields.get('initials', ''))
 
             # Enclosures (if provided)
