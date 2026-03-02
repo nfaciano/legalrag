@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Scale, Search, FileText, Home, ArrowRight, Mail, Settings as SettingsIcon, Files } from "lucide-react";
+import { Scale, Search, FileText, Home, ArrowRight, Mail, Settings as SettingsIcon, Files, Gavel } from "lucide-react";
 import { SignedIn, SignedOut, SignInButton, UserButton } from "@clerk/clerk-react";
 import { FileUpload } from "@/components/FileUpload";
 import { SearchBar } from "@/components/SearchBar";
@@ -8,11 +8,12 @@ import { DocumentList } from "@/components/DocumentList";
 import { DocumentAutomation } from "@/components/DocumentAutomation";
 import { EnvelopeGeneration } from "@/components/EnvelopeGeneration";
 import { GeneratedDocuments } from "@/components/GeneratedDocuments";
+import { PleadingGeneration } from "@/components/PleadingGeneration";
 import { Settings } from "@/components/Settings";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import type { SearchResponse, UploadResponse } from "@/types/api";
 
-type Tab = 'home' | 'search' | 'automation' | 'envelope' | 'documents' | 'settings';
+type Tab = 'home' | 'search' | 'automation' | 'envelope' | 'pleading' | 'documents' | 'settings';
 
 function App() {
   const [activeTab, setActiveTab] = useState<Tab>('home');
@@ -164,6 +165,17 @@ function App() {
                     <span>Envelopes</span>
                   </button>
                   <button
+                    onClick={() => setActiveTab('pleading')}
+                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all font-medium ${
+                      activeTab === 'pleading'
+                        ? 'bg-primary text-primary-foreground shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-white dark:hover:bg-slate-800'
+                    }`}
+                  >
+                    <Gavel className="h-5 w-5" />
+                    <span>Court Filings</span>
+                  </button>
+                  <button
                     onClick={() => setActiveTab('documents')}
                     className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all font-medium ${
                       activeTab === 'documents'
@@ -281,6 +293,31 @@ function App() {
                     </CardContent>
                   </Card>
 
+                  {/* Court Filings Card */}
+                  <Card
+                    className="group cursor-pointer border-2 hover:border-primary/50 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-900 dark:to-slate-800/50"
+                    onClick={() => setActiveTab('pleading')}
+                  >
+                    <CardHeader className="pb-4">
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="p-4 bg-gradient-to-br from-amber-500 to-amber-600 rounded-xl shadow-lg shadow-amber-500/20 group-hover:shadow-amber-500/40 transition-shadow">
+                          <Gavel className="h-7 w-7 text-white" />
+                        </div>
+                        <ArrowRight className="h-5 w-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
+                      </div>
+                      <CardTitle className="text-2xl mb-2">Court Filings</CardTitle>
+                      <CardDescription className="text-base">
+                        Generate formatted court pleadings
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-sm text-muted-foreground leading-relaxed">
+                        Create motions, complaints, and other court filings with proper
+                        caption formatting, signature blocks, and certification pages.
+                      </p>
+                    </CardContent>
+                  </Card>
+
                   {/* Generated Documents Card */}
                   <Card
                     className="group cursor-pointer border-2 hover:border-primary/50 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-900 dark:to-slate-800/50"
@@ -358,6 +395,19 @@ function App() {
                 </p>
               </div>
               <EnvelopeGeneration />
+            </div>
+          )}
+
+          {/* Court Filings View */}
+          {activeTab === 'pleading' && (
+            <div className="p-8">
+              <div className="mb-6">
+                <h2 className="text-3xl font-bold mb-2">Court Filings</h2>
+                <p className="text-muted-foreground">
+                  Generate formatted court pleadings, motions, and filings
+                </p>
+              </div>
+              <PleadingGeneration />
             </div>
           )}
 

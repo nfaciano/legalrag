@@ -1,263 +1,136 @@
-# LegalRAG - Semantic Legal Document Search
+# LegalRAG - Legal Document Search & Court Filing Generator
 
-A production-ready RAG (Retrieval-Augmented Generation) system for semantic search over legal documents. Built with FastAPI, ChromaDB, and sentence-transformers.
+A full-stack legal practice tool combining semantic document search (RAG) with automated court filing generation. Built with FastAPI, React, ChromaDB, and python-docx.
 
 ## Features
 
-- **PDF Document Upload**: Process and index legal PDFs automatically
-- **Semantic Search**: Natural language queries over your document corpus
-- **Vector Search**: Fast similarity search using ChromaDB
-- **Local Embeddings**: Free sentence-transformers (no API costs)
-- **Document Management**: List and delete indexed documents
-- **Production Ready**: Async FastAPI with proper error handling and logging
+### Document Search (RAG)
+- **PDF Upload with OCR**: Process and index legal PDFs, with automatic OCR for scanned documents
+- **Semantic Search**: Natural language queries over your document corpus using QA-optimized embeddings
+- **AI Answer Synthesis**: Optional Groq-powered answer generation from search results
+- **Document Management**: Upload, list, view full text, and delete indexed documents
 
-## Architecture
+### Document Automation
+- **Letter Generation**: Professional letters with letterhead support and AI body generation
+- **Envelope Printing**: Generate envelopes from recipient addresses
+- **Template Management**: SQLite-backed letterhead and template storage
 
-```
-User uploads PDF → PDF Parser (PyMuPDF) → Text Chunker (500 words, 50 overlap)
-                                              ↓
-                            Sentence Transformer (all-MiniLM-L6-v2)
-                                              ↓
-                                    ChromaDB Vector Store
-                                              ↓
-User query → Embed query → Vector search → Ranked results with citations
-```
+### Court Filing Generator
+- **Case Management**: Save and manage case information (parties, court, case number)
+- **Pleading Generation**: Generate formatted .docx court filings with:
+  - Caption table with party names, court name, and case number
+  - Support for all RI state courts and federal courts with county/location selection
+  - Markdown-lite body formatting: `## headings`, `**bold**`, `__underline__`, numbered lists, bullets
+  - Signature block with attorney info pulled from settings
+  - Certification of service with configurable filing method (ECF, Tyler, mail, hand delivery) and service method (ECF auto-serve, email, mail, hand delivery)
+- **Section Builder UI**: Visual drag-and-drop section builder for motion body content (paragraphs, bullets, numbered items)
+- **AI Body Generation**: Generate motion body text via Groq AI from natural language prompts
+
+### Platform
+- **JWT Authentication**: Secure user sessions
+- **User Settings**: Attorney info, bar number, firm details persisted per user
+- **Responsive React Frontend**: Sidebar navigation with dashboard
 
 ## Tech Stack
 
-- **FastAPI**: Modern async Python web framework
-- **ChromaDB**: Open-source vector database (local, persistent)
-- **sentence-transformers**: Free embedding model (all-MiniLM-L6-v2)
-- **PyMuPDF**: Fast PDF text extraction
-- **Pydantic**: Data validation and serialization
+### Backend
+- **FastAPI** with modular route splitting
+- **ChromaDB** for vector storage
+- **sentence-transformers** (`multi-qa-MiniLM-L6-cos-v1`) for QA-optimized embeddings
+- **PyMuPDF** for PDF text extraction + OCR
+- **python-docx** for .docx court filing generation
+- **Groq API** for AI answer synthesis and document body generation
+- **SQLite** for case data, user settings, and template management
 
-## Installation
-
-### Prerequisites
-- Python 3.9+
-- pip
-
-### Setup
-
-```bash
-# Clone or navigate to project
-cd legalrag
-
-# Create virtual environment
-python -m venv venv
-
-# Activate virtual environment
-# Windows:
-venv\Scripts\activate
-# Mac/Linux:
-source venv/bin/activate
-
-# Install dependencies
-pip install -r requirements.txt
-```
-
-## Usage
-
-### Start the Server
-
-```bash
-# From legalrag directory
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-```
-
-The API will be available at `http://localhost:8000`
-
-Interactive API docs: `http://localhost:8000/docs`
-
-### API Endpoints
-
-#### 1. Upload Document
-
-```bash
-curl -X POST "http://localhost:8000/upload" \
-  -H "accept: application/json" \
-  -H "Content-Type: multipart/form-data" \
-  -F "file=@/path/to/contract.pdf"
-```
-
-Response:
-```json
-{
-  "document_id": "a1b2c3d4e5f6",
-  "filename": "contract.pdf",
-  "total_chunks": 47,
-  "message": "Successfully indexed contract.pdf into 47 chunks"
-}
-```
-
-#### 2. Search Documents
-
-```bash
-curl -X POST "http://localhost:8000/search" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "query": "What are the termination clauses?",
-    "top_k": 5
-  }'
-```
-
-Response:
-```json
-{
-  "query": "What are the termination clauses?",
-  "results": [
-    {
-      "text": "Either party may terminate this agreement...",
-      "metadata": {
-        "document_id": "a1b2c3d4e5f6",
-        "filename": "contract.pdf",
-        "page": 12,
-        "chunk_id": "a1b2c3d4e5f6_chunk_23"
-      },
-      "similarity_score": 0.8532
-    }
-  ],
-  "total_results": 5
-}
-```
-
-#### 3. List Documents
-
-```bash
-curl -X GET "http://localhost:8000/documents"
-```
-
-#### 4. Delete Document
-
-```bash
-curl -X DELETE "http://localhost:8000/documents/a1b2c3d4e5f6"
-```
+### Frontend
+- **React 18** + **TypeScript**
+- **Tailwind CSS** + **shadcn/ui** components
+- **Vite** build tooling
 
 ## Project Structure
 
 ```
 legalrag/
 ├── app/
-│   ├── __init__.py
-│   ├── main.py              # FastAPI app and endpoints
-│   ├── models.py            # Pydantic data models
-│   ├── database.py          # ChromaDB vector database
-│   ├── embeddings.py        # Sentence transformer wrapper
-│   ├── document_processor.py # PDF parsing and chunking
-│   └── search.py            # Semantic search logic
-├── uploads/                 # Temporary PDF storage
-├── chroma_db/              # ChromaDB persistent storage
+│   ├── main.py                          # FastAPI app setup and startup
+│   ├── models.py                        # Pydantic models (search, documents, cases, pleadings)
+│   ├── database.py                      # ChromaDB vector database
+│   ├── embeddings.py                    # Sentence transformer wrapper
+│   ├── document_processor.py            # PDF parsing, OCR, and chunking
+│   ├── search.py                        # Semantic search logic
+│   ├── auth.py                          # JWT authentication
+│   ├── case_db.py                       # Case CRUD (SQLite)
+│   ├── user_settings_db.py              # User settings persistence
+│   ├── routes/
+│   │   ├── documents.py                 # Upload, list, delete, view documents
+│   │   ├── search.py                    # Search endpoint
+│   │   ├── generation.py                # Letter/envelope generation
+│   │   ├── cases.py                     # Case CRUD + pleading generation
+│   │   └── settings.py                  # User settings endpoints
+│   └── document_generation/
+│       ├── pleading_generator.py        # .docx court filing formatter
+│       ├── pleading_builder.py          # Orchestrates AI + formatting
+│       ├── template_manager.py          # SQLite letterhead/template storage
+│       └── envelope_builder.py          # Envelope generation
+├── data/                                # Persistent storage (ChromaDB, SQLite, uploads)
 ├── requirements.txt
 ├── Dockerfile
 └── README.md
+
+frontend/
+├── src/
+│   ├── App.tsx                          # Main app with sidebar navigation
+│   ├── types/api.ts                     # TypeScript API interfaces
+│   └── components/
+│       ├── PleadingGeneration/          # Court filing generator UI
+│       ├── DocumentAutomation/          # Letter & envelope generation
+│       ├── GeneratedDocuments/          # Generated document list & download
+│       ├── Settings/                    # Attorney info & user settings
+│       ├── DocumentList.tsx             # Uploaded document management
+│       └── ui/                          # shadcn/ui components
+└── package.json
 ```
 
-## How It Works
+## Setup
 
-### 1. Document Upload
-1. User uploads PDF via `/upload` endpoint
-2. PyMuPDF extracts text from each page
-3. Text is split into 500-word chunks with 50-word overlap
-4. Each chunk is embedded using sentence-transformers (384-dim vectors)
-5. Chunks + embeddings + metadata stored in ChromaDB
+### Prerequisites
+- Python 3.9+
+- Node.js 18+
 
-### 2. Search
-1. User sends natural language query to `/search`
-2. Query is embedded using the same model
-3. ChromaDB performs vector similarity search (cosine similarity)
-4. Top K most similar chunks returned with metadata (filename, page, score)
+### Backend
 
-## Configuration
-
-Edit `app/document_processor.py` to customize chunking:
-
-```python
-DocumentProcessor(
-    chunk_size=500,      # Words per chunk
-    chunk_overlap=50     # Overlap between chunks
-)
+```bash
+cd legalrag
+python -m venv venv
+source venv/bin/activate  # or venv\Scripts\activate on Windows
+pip install -r requirements.txt
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-Edit `app/embeddings.py` to use a different model:
+### Frontend
 
-```python
-EmbeddingModel(model_name="all-MiniLM-L6-v2")
-# Alternatives: "all-mpnet-base-v2", "e5-large-v2"
+```bash
+cd frontend
+npm install
+npm run dev
 ```
+
+### Environment Variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `JWT_SECRET` | Yes | Secret key for JWT token signing |
+| `GROQ_API_KEY` | Optional | Groq API key for AI features (answer synthesis, body generation) |
 
 ## Deployment
 
-### Docker
+Configured for Railway with persistent volume at `/app/data`:
 
 ```bash
-# Build image
 docker build -t legalrag .
-
-# Run container
-docker run -p 8000:8000 -v $(pwd)/chroma_db:/app/chroma_db legalrag
+docker run -p 8000:8000 -v $(pwd)/data:/app/data legalrag
 ```
-
-### Railway / Render / Fly.io
-
-1. Push to GitHub
-2. Connect repo to platform
-3. Set start command: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
-4. Deploy
-
-## Example Use Cases
-
-- **Contract Analysis**: "What are the payment terms?"
-- **Legal Research**: "Find cases about intellectual property disputes"
-- **Due Diligence**: "What liability clauses exist?"
-- **Compliance**: "What are the data privacy requirements?"
-
-## Performance
-
-- **Embedding Generation**: ~100 chunks/second on CPU
-- **Search Latency**: <100ms for typical queries
-- **Storage**: ~1KB per chunk (text + embeddings + metadata)
-
-## Limitations & Future Improvements
-
-### Current Limitations
-- PDF-only (no .docx, .txt yet)
-- Simple chunking (doesn't preserve document structure)
-- No reranking (could add Cohere rerank for better results)
-- No LLM synthesis (returns raw chunks, not generated answers)
-
-### Potential Enhancements
-- Add reranking model for better result quality
-- Integrate with Claude/GPT for answer synthesis
-- Support more file formats (.docx, .txt, .html)
-- Add hybrid search (keyword + semantic)
-- Implement user authentication
-- Add caching for common queries
-- Fine-tune embeddings on legal corpus
-
-## Cost Analysis
-
-- **Development**: $0 (all open-source)
-- **Running locally**: $0
-- **Deployment**: $0-5/month (Railway free tier or AWS free tier)
-- **Embeddings**: $0 (sentence-transformers runs locally)
-- **Vector DB**: $0 (ChromaDB is free)
-
-**Total**: $0 for MVP, scalable to production for <$50/month
-
-## Resume Talking Points
-
-This project demonstrates:
-- **RAG Architecture**: End-to-end retrieval-augmented generation pipeline
-- **Vector Databases**: ChromaDB integration with embeddings and similarity search
-- **ML Infrastructure**: Production-ready FastAPI backend with async operations
-- **Document Processing**: PDF parsing, text chunking, and ETL pipelines
-- **Semantic Search**: Embedding generation and vector similarity retrieval
-- **Domain Expertise**: Legal document understanding (leverage paralegal background)
 
 ## License
 
 MIT
-
-## Author
-
-Built as a portfolio project demonstrating ML infrastructure and RAG system design.

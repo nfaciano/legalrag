@@ -136,3 +136,61 @@ export interface GeneratedDocumentListResponse {
   documents: GeneratedDocumentInfo[];
   total_documents: number;
 }
+
+// ============================================================================
+// Case & Court Pleading Types
+// ============================================================================
+
+export interface CaseInfo {
+  case_id: string;
+  case_name: string;
+  case_number: string;
+  court_name: string;
+  court_location: string;
+  plaintiff_names: string[];
+  defendant_names: string[];
+  plaintiff_label: string;
+  file_reference: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CaseCreateRequest {
+  case_name: string;
+  case_number: string;
+  court_name: string;
+  court_location?: string;
+  plaintiff_names: string[];
+  defendant_names: string[];
+  plaintiff_label?: string;
+  file_reference?: string;
+}
+
+export interface CaseListResponse {
+  cases: CaseInfo[];
+  total_cases: number;
+}
+
+export interface PleadingGenerationRequest {
+  case_id: string;
+  document_title: string;
+  body_text?: string | null;
+  body_paragraphs?: string[] | null;
+  representing_party: string;
+  attorney_capacity?: string;
+  include_certification?: boolean;
+  certification_date?: string | null;
+  filing_method?: string;
+  service_method?: string;
+  service_list?: string[] | null;
+  ai_generate_body?: boolean;
+  ai_prompt?: string | null;
+}
+
+export interface PleadingResponse {
+  document_id: string;
+  filename: string;
+  file_size: number;
+  generated_at: string;
+  download_url: string;
+}

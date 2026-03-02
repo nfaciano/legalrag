@@ -4,6 +4,7 @@ Envelope builder for assembling and generating envelopes.
 
 import uuid
 import os
+import re
 import logging
 from pathlib import Path
 from typing import Optional, Dict, Any
@@ -58,8 +59,8 @@ class EnvelopeBuilder:
 
         # Generate filename
         recipient_name = recipient_data.get('name', 'recipient')
-        # Sanitize name for filename
-        safe_name = recipient_name.replace(' ', '_').replace('/', '-')[:30]
+        # Sanitize name for filename - strip all unsafe characters
+        safe_name = re.sub(r'[^a-zA-Z0-9_.\-]', '_', recipient_name)[:30]
         date_str = datetime.now().strftime('%Y-%m-%d')
         filename = f"{safe_name}_envelope_{date_str}_{envelope_id}.docx"
         output_path = user_output_dir / filename

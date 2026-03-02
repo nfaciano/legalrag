@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useApi } from '@/lib/useApi';
 import { Button } from '../ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Alert, AlertDescription } from '../ui/alert';
+import { ConfirmDialog } from '../ui/confirm-dialog';
 import { FileText, Download, Trash2, AlertCircle, Loader2 } from 'lucide-react';
 import type { GeneratedDocumentListResponse } from '@/types/api';
 
@@ -13,6 +14,8 @@ export function GeneratedDocuments() {
   const [deleting, setDeleting] = useState<string | null>(null);
   const [error, setError] = useState<string>('');
   const [success, setSuccess] = useState<string>('');
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+  const [deleteAllOpen, setDeleteAllOpen] = useState(false);
 
   useEffect(() => {
     loadDocuments();
@@ -63,14 +66,14 @@ export function GeneratedDocuments() {
     }
   };
 
-  const handleDelete = async (documentId: string) => {
-    if (!confirm('Are you sure you want to delete this document?')) return;
+  const handleDelete = useCallback(async () => {
+    if (!deleteTarget) return;
 
-    setDeleting(documentId);
+    setDeleting(deleteTarget);
     setError('');
 
     try {
-      await apiClient.delete(`/generated-documents/${documentId}`);
+      await apiClient.delete(`/generated-documents/${deleteTarget}`);
       setSuccess('Document deleted successfully');
       setTimeout(() => setSuccess(''), 3000);
       await loadDocuments();
@@ -79,13 +82,13 @@ export function GeneratedDocuments() {
       setError('Failed to delete document');
     } finally {
       setDeleting(null);
+      setDeleteTarget(null);
     }
-  };
+  }, [deleteTarget]);
 
-  const handleDeleteAll = async () => {
-    if (!confirm('Are you sure you want to delete ALL documents? This cannot be undone.')) return;
-
+  const handleDeleteAll = useCallback(async () => {
     setError('');
+    setDeleteAllOpen(false);
 
     try {
       await apiClient.delete('/generated-documents');
@@ -96,7 +99,7 @@ export function GeneratedDocuments() {
       console.error('Delete all error:', err);
       setError('Failed to delete documents');
     }
-  };
+  }, []);
 
   if (loading) {
     return (
@@ -142,7 +145,7 @@ export function GeneratedDocuments() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={handleDeleteAll}
+                onClick={() => setDeleteAllOpen(true)}
                 className="text-red-600 hover:text-red-700 hover:bg-red-50"
               >
                 <Trash2 className="h-4 w-4 mr-2" />
@@ -185,7 +188,7 @@ export function GeneratedDocuments() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => handleDelete(doc.document_id)}
+                      onClick={() => setDeleteTarget(doc.document_id)}
                       disabled={deleting === doc.document_id}
                       className="text-red-600 hover:text-red-700 hover:bg-red-50"
                     >
@@ -202,6 +205,22 @@ export function GeneratedDocuments() {
           )}
         </CardContent>
       </Card>
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+        onConfirm={handleDelete}
+        description="This will permanently delete this document. This action cannot be undone."
+      />
+
+      <ConfirmDialog
+        open={deleteAllOpen}
+        onOpenChange={setDeleteAllOpen}
+        onConfirm={handleDeleteAll}
+        title="Delete all documents?"
+        description="This will permanently delete ALL your generated documents. This action cannot be undone."
+        confirmLabel="Delete All"
+      />
 
       {/* Info Box */}
       <Card className="bg-slate-50 dark:bg-slate-900">

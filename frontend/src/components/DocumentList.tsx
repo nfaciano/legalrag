@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { FileText, Trash2, RefreshCw, ScanLine, Eye } from "lucide-react";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   Card,
   CardContent,
@@ -21,6 +22,7 @@ export function DocumentList({ refreshTrigger }: DocumentListProps) {
   const [documents, setDocuments] = useState<DocumentInfo[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
   const fetchDocuments = async () => {
     setIsLoading(true);
@@ -40,18 +42,18 @@ export function DocumentList({ refreshTrigger }: DocumentListProps) {
     fetchDocuments();
   }, [refreshTrigger]);
 
-  const handleDelete = async (documentId: string) => {
-    if (!confirm("Are you sure you want to delete this document?")) {
-      return;
-    }
+  const handleDelete = useCallback(async () => {
+    if (!deleteTarget) return;
 
     try {
-      await apiClient.deleteDocument(documentId);
+      await apiClient.deleteDocument(deleteTarget);
       await fetchDocuments();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to delete document");
+    } finally {
+      setDeleteTarget(null);
     }
-  };
+  }, [deleteTarget]);
 
   const handleViewText = async (documentId: string) => {
     try {
@@ -217,7 +219,7 @@ export function DocumentList({ refreshTrigger }: DocumentListProps) {
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() => handleDelete(doc.document_id)}
+                    onClick={() => setDeleteTarget(doc.document_id)}
                     title="Delete document"
                   >
                     <Trash2 className="h-4 w-4 text-destructive" />
@@ -228,6 +230,13 @@ export function DocumentList({ refreshTrigger }: DocumentListProps) {
           </div>
         )}
       </CardContent>
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+        onConfirm={handleDelete}
+        description="This will permanently delete this document and all its indexed chunks. This action cannot be undone."
+      />
     </Card>
   );
 }

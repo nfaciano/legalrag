@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useApi } from '../../lib/useApi';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -6,6 +6,7 @@ import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Alert, AlertDescription } from '../ui/alert';
+import { ConfirmDialog } from '../ui/confirm-dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { Upload, FileText, Trash2, Loader2, FileCheck, Sparkles, Edit3 } from 'lucide-react';
 import type {
@@ -60,6 +61,7 @@ export function DocumentAutomation() {
   // UI state
   const [error, setError] = useState<string>('');
   const [success, setSuccess] = useState<string>('');
+  const [deleteLetterheadTarget, setDeleteLetterheadTarget] = useState<string | null>(null);
 
   // Get user settings from API
   const getUserSettings = async () => {
@@ -138,21 +140,23 @@ export function DocumentAutomation() {
     }
   };
 
-  const handleDeleteLetterhead = async (letterheadId: string) => {
-    if (!confirm('Are you sure you want to delete this letterhead?')) return;
+  const handleDeleteLetterhead = useCallback(async () => {
+    if (!deleteLetterheadTarget) return;
 
     try {
-      await apiClient.delete(`/templates/${letterheadId}`);
+      await apiClient.delete(`/templates/${deleteLetterheadTarget}`);
       setSuccess('Letterhead deleted successfully');
       await loadLetterheads();
 
-      if (selectedLetterhead === letterheadId) {
+      if (selectedLetterhead === deleteLetterheadTarget) {
         setSelectedLetterhead('');
       }
     } catch (err: any) {
       setError(err.message || 'Failed to delete letterhead');
+    } finally {
+      setDeleteLetterheadTarget(null);
     }
-  };
+  }, [deleteLetterheadTarget, selectedLetterhead]);
 
   const handleGenerateDocument = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -366,7 +370,7 @@ export function DocumentAutomation() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => handleDeleteLetterhead(lh.letterhead_id)}
+                          onClick={() => setDeleteLetterheadTarget(lh.letterhead_id)}
                           className="opacity-0 group-hover:opacity-100 transition-opacity"
                         >
                           <Trash2 className="h-3.5 w-3.5 text-destructive" />
@@ -623,6 +627,13 @@ export function DocumentAutomation() {
         </Card>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={!!deleteLetterheadTarget}
+        onOpenChange={(open) => !open && setDeleteLetterheadTarget(null)}
+        onConfirm={handleDeleteLetterhead}
+        description="This will permanently delete this template. This action cannot be undone."
+      />
     </div>
   );
 }

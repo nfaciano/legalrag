@@ -5,7 +5,7 @@ import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Alert, AlertDescription } from '../ui/alert';
-import { Settings as SettingsIcon, Mail, FileText, Save, CheckCircle2, Loader2 } from 'lucide-react';
+import { Settings as SettingsIcon, Mail, FileText, Scale, Save, CheckCircle2, Loader2 } from 'lucide-react';
 
 interface UserSettings {
   // Return Address (for envelopes)
@@ -18,6 +18,16 @@ interface UserSettings {
   signature_name: string;
   initials: string;
   closing: string;
+
+  // Attorney / Firm Info (for court filings)
+  bar_number: string;
+  firm_name: string;
+  attorney_address_line1: string;
+  attorney_address_line2: string;
+  attorney_city_state_zip: string;
+  phone: string;
+  fax: string;
+  email: string;
 }
 
 export function Settings() {
@@ -29,7 +39,15 @@ export function Settings() {
     return_address_city_state_zip: '',
     signature_name: '',
     initials: '',
-    closing: 'Very truly yours,'
+    closing: 'Very truly yours,',
+    bar_number: '',
+    firm_name: '',
+    attorney_address_line1: '',
+    attorney_address_line2: '',
+    attorney_city_state_zip: '',
+    phone: '',
+    fax: '',
+    email: '',
   });
 
   const [success, setSuccess] = useState<string>('');
@@ -72,7 +90,7 @@ export function Settings() {
         </Alert>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Return Address Settings */}
         <Card>
           <CardHeader>
@@ -171,6 +189,93 @@ export function Settings() {
               <p className="text-xs text-muted-foreground mt-1">
                 Default closing phrase (e.g., "Sincerely", "Best regards")
               </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Attorney / Firm Information */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Scale className="h-5 w-5" />
+              Attorney / Firm
+            </CardTitle>
+            <CardDescription>
+              Information for court filing signature blocks
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <Label htmlFor="bar-number">Bar Number</Label>
+              <Input
+                id="bar-number"
+                placeholder="#3302"
+                value={settings.bar_number}
+                onChange={(e) => setSettings({ ...settings, bar_number: e.target.value })}
+              />
+            </div>
+            <div>
+              <Label htmlFor="firm-name">Firm Name</Label>
+              <Input
+                id="firm-name"
+                placeholder="OLENN & PENZA, LLP"
+                value={settings.firm_name}
+                onChange={(e) => setSettings({ ...settings, firm_name: e.target.value })}
+              />
+            </div>
+            <div>
+              <Label htmlFor="atty-line1">Street Address</Label>
+              <Input
+                id="atty-line1"
+                placeholder="530 Greenwich Avenue"
+                value={settings.attorney_address_line1}
+                onChange={(e) => setSettings({ ...settings, attorney_address_line1: e.target.value })}
+              />
+            </div>
+            <div>
+              <Label htmlFor="atty-line2">Suite/Floor (optional)</Label>
+              <Input
+                id="atty-line2"
+                placeholder="Suite 200"
+                value={settings.attorney_address_line2}
+                onChange={(e) => setSettings({ ...settings, attorney_address_line2: e.target.value })}
+              />
+            </div>
+            <div>
+              <Label htmlFor="atty-city">City, State ZIP</Label>
+              <Input
+                id="atty-city"
+                placeholder="Warwick, RI 02886"
+                value={settings.attorney_city_state_zip}
+                onChange={(e) => setSettings({ ...settings, attorney_city_state_zip: e.target.value })}
+              />
+            </div>
+            <div>
+              <Label htmlFor="phone">Phone</Label>
+              <Input
+                id="phone"
+                placeholder="(401) 737-3700"
+                value={settings.phone}
+                onChange={(e) => setSettings({ ...settings, phone: e.target.value })}
+              />
+            </div>
+            <div>
+              <Label htmlFor="fax">Fax</Label>
+              <Input
+                id="fax"
+                placeholder="(401) 737-5499"
+                value={settings.fax}
+                onChange={(e) => setSettings({ ...settings, fax: e.target.value })}
+              />
+            </div>
+            <div>
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                placeholder="mjc@olenn-penza.com"
+                value={settings.email}
+                onChange={(e) => setSettings({ ...settings, email: e.target.value })}
+              />
             </div>
           </CardContent>
         </Card>

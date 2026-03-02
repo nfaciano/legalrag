@@ -11,9 +11,8 @@ logger = logging.getLogger(__name__)
 CLERK_SECRET_KEY = os.environ.get("CLERK_SECRET_KEY")
 clerk = Clerk(bearer_auth=CLERK_SECRET_KEY)
 
-# Extract the Clerk publishable key domain from secret key or use default
-# The JWKS URL is at https://clerk.DOMAIN/.well-known/jwks.json
-CLERK_JWKS_URL = "https://charmed-deer-66.clerk.accounts.dev/.well-known/jwks.json"
+# JWKS URL for verifying Clerk JWTs - must be set in environment
+CLERK_JWKS_URL = os.environ.get("CLERK_JWKS_URL", "https://charmed-deer-66.clerk.accounts.dev/.well-known/jwks.json")
 
 async def get_current_user(authorization: str = Header(None)) -> str:
     """

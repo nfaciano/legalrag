@@ -1,11 +1,14 @@
 """
 Template manager for handling Word document template uploads and storage.
+Uses SQLite for metadata persistence (atomic, concurrent-safe).
 """
 
 import os
 import uuid
+import sqlite3
 from pathlib import Path
 from typing import Optional, List, Dict
+from contextlib import contextmanager
 import logging
 from datetime import datetime
 
@@ -14,6 +17,44 @@ logger = logging.getLogger(__name__)
 ALLOWED_TEMPLATE_TYPES = {".docx"}
 MAX_TEMPLATE_SIZE = 10 * 1024 * 1024  # 10MB
 
+# Database file location (same directory as user_settings.db)
+DB_PATH = Path("./data/uploads/template_metadata.db")
+
+
+@contextmanager
+def _get_db_connection():
+    """Context manager for database connections."""
+    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+    conn = sqlite3.connect(str(DB_PATH))
+    conn.row_factory = sqlite3.Row
+    try:
+        yield conn
+    finally:
+        conn.close()
+
+
+def _init_template_db():
+    """Initialize the template metadata database."""
+    with _get_db_connection() as conn:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS templates (
+                template_id TEXT PRIMARY KEY,
+                user_id TEXT NOT NULL,
+                original_filename TEXT NOT NULL,
+                file_path TEXT NOT NULL,
+                file_size INTEGER NOT NULL,
+                upload_date TEXT NOT NULL
+            )
+        """)
+        conn.execute("""
+            CREATE INDEX IF NOT EXISTS idx_templates_user_id ON templates(user_id)
+        """)
+        conn.commit()
+
+
+# Initialize on module load
+_init_template_db()
+
 
 class TemplateManager:
     """Manages Word document template storage and retrieval."""
@@ -21,25 +62,43 @@ class TemplateManager:
     def __init__(self, storage_dir: str = "./data/uploads/templates"):
         self.storage_dir = Path(storage_dir)
         self.storage_dir.mkdir(parents=True, exist_ok=True)
-        self.metadata_file = self.storage_dir / "metadata.json"
-        self._load_metadata()
+        self._migrate_json_metadata()
 
-    def _load_metadata(self):
-        """Load template metadata from JSON file."""
+    def _migrate_json_metadata(self):
+        """One-time migration from legacy metadata.json to SQLite."""
         import json
 
-        if self.metadata_file.exists():
-            with open(self.metadata_file, "r") as f:
-                self.metadata = json.load(f)
-        else:
-            self.metadata = {}
+        legacy_file = self.storage_dir / "metadata.json"
+        if not legacy_file.exists():
+            return
 
-    def _save_metadata(self):
-        """Save template metadata to JSON file."""
-        import json
+        try:
+            with open(legacy_file, "r") as f:
+                legacy_data = json.load(f)
 
-        with open(self.metadata_file, "w") as f:
-            json.dump(self.metadata, f, indent=2)
+            with _get_db_connection() as conn:
+                for user_id, templates in legacy_data.items():
+                    for template_id, tpl in templates.items():
+                        conn.execute(
+                            """INSERT OR IGNORE INTO templates
+                               (template_id, user_id, original_filename, file_path, file_size, upload_date)
+                               VALUES (?, ?, ?, ?, ?, ?)""",
+                            (
+                                tpl["template_id"],
+                                user_id,
+                                tpl["original_filename"],
+                                tpl["file_path"],
+                                tpl["file_size"],
+                                tpl["upload_date"],
+                            ),
+                        )
+                conn.commit()
+
+            # Rename legacy file so migration doesn't run again
+            legacy_file.rename(legacy_file.with_suffix(".json.bak"))
+            logger.info("Migrated template metadata from JSON to SQLite")
+        except Exception as e:
+            logger.error(f"Failed to migrate template metadata: {e}")
 
     def save_template(
         self, user_id: str, filename: str, file_content: bytes
@@ -80,30 +139,38 @@ class TemplateManager:
         with open(file_path, "wb") as f:
             f.write(file_content)
 
-        # Store metadata
-        if user_id not in self.metadata:
-            self.metadata[user_id] = {}
+        # Store metadata in SQLite
+        upload_date = datetime.utcnow().isoformat()
+        with _get_db_connection() as conn:
+            conn.execute(
+                """INSERT INTO templates
+                   (template_id, user_id, original_filename, file_path, file_size, upload_date)
+                   VALUES (?, ?, ?, ?, ?, ?)""",
+                (template_id, user_id, filename, str(file_path), len(file_content), upload_date),
+            )
+            conn.commit()
 
-        self.metadata[user_id][template_id] = {
+        logger.info(f"Saved template {template_id} for user {user_id}")
+
+        return {
             "template_id": template_id,
             "original_filename": filename,
             "file_path": str(file_path),
             "file_size": len(file_content),
-            "upload_date": datetime.utcnow().isoformat(),
+            "upload_date": upload_date,
         }
-
-        self._save_metadata()
-
-        logger.info(f"Saved template {template_id} for user {user_id}")
-
-        return self.metadata[user_id][template_id]
 
     def get_template(self, user_id: str, template_id: str) -> Optional[Dict]:
         """Get template metadata and file path."""
-        if user_id not in self.metadata:
-            return None
+        with _get_db_connection() as conn:
+            row = conn.execute(
+                "SELECT * FROM templates WHERE template_id = ? AND user_id = ?",
+                (template_id, user_id),
+            ).fetchone()
 
-        return self.metadata[user_id].get(template_id)
+        if row:
+            return dict(row)
+        return None
 
     def get_template_path(self, user_id: str, template_id: str) -> Optional[Path]:
         """Get the file path for a template."""
@@ -114,29 +181,34 @@ class TemplateManager:
 
     def list_templates(self, user_id: str) -> List[Dict]:
         """List all templates for a user."""
-        if user_id not in self.metadata:
-            return []
+        with _get_db_connection() as conn:
+            rows = conn.execute(
+                "SELECT * FROM templates WHERE user_id = ? ORDER BY upload_date DESC",
+                (user_id,),
+            ).fetchall()
 
-        return list(self.metadata[user_id].values())
+        return [dict(row) for row in rows]
 
     def delete_template(self, user_id: str, template_id: str) -> bool:
         """Delete a template."""
-        if user_id not in self.metadata or template_id not in self.metadata[user_id]:
+        template = self.get_template(user_id, template_id)
+        if not template:
             return False
 
-        template = self.metadata[user_id][template_id]
-        file_path = Path(template["file_path"])
-
         # Delete file
+        file_path = Path(template["file_path"])
         if file_path.exists():
             file_path.unlink()
 
         # Remove metadata
-        del self.metadata[user_id][template_id]
-        self._save_metadata()
+        with _get_db_connection() as conn:
+            conn.execute(
+                "DELETE FROM templates WHERE template_id = ? AND user_id = ?",
+                (template_id, user_id),
+            )
+            conn.commit()
 
         logger.info(f"Deleted template {template_id} for user {user_id}")
-
         return True
 
 

@@ -10,41 +10,24 @@ logger = logging.getLogger(__name__)
 class SearchEngine:
     """Semantic search engine for legal documents"""
 
-    def __init__(self, use_reranking: bool = True):  # Enabled for Railway 8GB RAM
+    def __init__(self):
         self.db = get_vector_db()
         self.embedder = get_embedding_model()
-        self.use_reranking = use_reranking
-        self.reranker = None
-
-        if use_reranking:
-            try:
-                from app.reranker import get_reranker
-                self.reranker = get_reranker()
-                logger.info("Reranking enabled")
-            except Exception as e:
-                logger.warning(f"Could not load reranker: {e}. Reranking disabled.")
-                self.use_reranking = False
 
     def search(self, query: str, top_k: int = 5, use_reranking: bool = None, user_id: str = None) -> List[SearchResult]:
         """
-        Perform semantic search with optional reranking
+        Perform semantic search over indexed documents.
 
         Args:
             query: Natural language query
             top_k: Number of results to return
-            use_reranking: Override instance reranking setting (optional)
+            use_reranking: Unused, kept for API compatibility
             user_id: Optional user ID to filter results
 
         Returns:
-            List of SearchResult objects, ranked by similarity (and reranked if enabled)
+            List of SearchResult objects, ranked by cosine similarity
         """
-        # Determine if we should use reranking
-        should_rerank = use_reranking if use_reranking is not None else self.use_reranking
-
-        # Fetch more results for reranking (retrieve 2-3x, then rerank to top_k)
-        retrieval_k = top_k * 3 if should_rerank and self.reranker else top_k
-
-        logger.info(f"Searching for: '{query}' (top_k={top_k}, retrieval_k={retrieval_k}, reranking={should_rerank}, user_id={user_id})")
+        logger.info(f"Searching for: '{query}' (top_k={top_k}, user_id={user_id})")
 
         # Generate query embedding
         query_embedding = self.embedder.embed_text(query)
@@ -53,7 +36,7 @@ class SearchEngine:
         where_filter = {"user_id": user_id} if user_id else None
 
         # Search vector database
-        results = self.db.search(query_embedding, top_k=retrieval_k, where=where_filter)
+        results = self.db.search(query_embedding, top_k=top_k, where=where_filter)
 
         # Format initial results
         search_results = []

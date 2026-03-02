@@ -74,7 +74,15 @@ def get_user_settings(user_id: str) -> Optional[Dict[str, Any]]:
                 "return_address_city_state_zip": row["return_address_city_state_zip"] or "",
                 "signature_name": row["signature_name"] or "",
                 "initials": row["initials"] or "",
-                "closing": row["closing"] or "Very truly yours,"
+                "closing": row["closing"] or "Very truly yours,",
+                "bar_number": row["bar_number"] or "",
+                "firm_name": row["firm_name"] or "",
+                "attorney_address_line1": row["attorney_address_line1"] or "",
+                "attorney_address_line2": row["attorney_address_line2"] or "",
+                "attorney_city_state_zip": row["attorney_city_state_zip"] or "",
+                "phone": row["phone"] or "",
+                "fax": row["fax"] or "",
+                "email": row["email"] or "",
             }
         return None
 
@@ -104,8 +112,16 @@ def save_user_settings(user_id: str, settings: Dict[str, Any]) -> Dict[str, Any]
                 signature_name,
                 initials,
                 closing,
+                bar_number,
+                firm_name,
+                attorney_address_line1,
+                attorney_address_line2,
+                attorney_city_state_zip,
+                phone,
+                fax,
+                email,
                 updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
         """, (
             user_id,
             settings.get("return_address_name", ""),
@@ -114,7 +130,15 @@ def save_user_settings(user_id: str, settings: Dict[str, Any]) -> Dict[str, Any]
             settings.get("return_address_city_state_zip", ""),
             settings.get("signature_name", ""),
             settings.get("initials", ""),
-            settings.get("closing", "Very truly yours,")
+            settings.get("closing", "Very truly yours,"),
+            settings.get("bar_number", ""),
+            settings.get("firm_name", ""),
+            settings.get("attorney_address_line1", ""),
+            settings.get("attorney_address_line2", ""),
+            settings.get("attorney_city_state_zip", ""),
+            settings.get("phone", ""),
+            settings.get("fax", ""),
+            settings.get("email", ""),
         ))
 
         conn.commit()
@@ -123,5 +147,29 @@ def save_user_settings(user_id: str, settings: Dict[str, Any]) -> Dict[str, Any]
         return settings
 
 
+def _migrate_attorney_columns():
+    """Add attorney info columns if they don't exist (idempotent)."""
+    new_columns = [
+        "bar_number TEXT DEFAULT ''",
+        "firm_name TEXT DEFAULT ''",
+        "attorney_address_line1 TEXT DEFAULT ''",
+        "attorney_address_line2 TEXT DEFAULT ''",
+        "attorney_city_state_zip TEXT DEFAULT ''",
+        "phone TEXT DEFAULT ''",
+        "fax TEXT DEFAULT ''",
+        "email TEXT DEFAULT ''",
+    ]
+    with get_db_connection() as conn:
+        for col_def in new_columns:
+            col_name = col_def.split()[0]
+            try:
+                conn.execute(f"ALTER TABLE user_settings ADD COLUMN {col_def}")
+            except sqlite3.OperationalError:
+                pass  # Column already exists
+        conn.commit()
+    logger.info("Attorney columns migration complete")
+
+
 # Initialize database on module import
 init_user_settings_db()
+_migrate_attorney_columns()

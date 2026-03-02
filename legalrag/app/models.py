@@ -180,6 +180,78 @@ class UserSettings(BaseModel):
     signature_name: str = ""
     initials: str = ""
     closing: str = "Very truly yours,"
+    # Attorney / firm info for court filings
+    bar_number: str = ""
+    firm_name: str = ""
+    attorney_address_line1: str = ""
+    attorney_address_line2: str = ""
+    attorney_city_state_zip: str = ""
+    phone: str = ""
+    fax: str = ""
+    email: str = ""
+
+
+# ============================================================================
+# Case & Court Pleading Models
+# ============================================================================
+
+class CaseCreateRequest(BaseModel):
+    """Request to create/save a case"""
+    case_name: str
+    case_number: str
+    court_name: str
+    court_location: str = ""
+    plaintiff_names: List[str]
+    defendant_names: List[str]
+    plaintiff_label: str = "VS."
+    file_reference: str = ""
+
+
+class CaseInfo(BaseModel):
+    """Stored case information"""
+    case_id: str
+    case_name: str
+    case_number: str
+    court_name: str
+    court_location: str = ""
+    plaintiff_names: List[str]
+    defendant_names: List[str]
+    plaintiff_label: str
+    file_reference: str
+    created_at: str
+    updated_at: str
+
+
+class CaseListResponse(BaseModel):
+    """Response listing all cases"""
+    cases: List[CaseInfo]
+    total_cases: int
+
+
+class PleadingGenerationRequest(BaseModel):
+    """Request to generate a court pleading"""
+    case_id: str
+    document_title: str
+    body_text: Optional[str] = None
+    body_paragraphs: Optional[List[str]] = None
+    representing_party: str
+    attorney_capacity: str = "By his Attorney,"
+    include_certification: bool = True
+    certification_date: Optional[str] = None
+    filing_method: str = "ecf"
+    service_method: str = "ecf_auto"
+    service_list: Optional[List[str]] = None
+    ai_generate_body: bool = False
+    ai_prompt: Optional[str] = None
+
+
+class PleadingResponse(BaseModel):
+    """Response after pleading generation"""
+    document_id: str
+    filename: str
+    file_size: int
+    generated_at: str
+    download_url: str
 
 
 class UserSettingsResponse(BaseModel):
